@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { LocationSnapshot, TimezoneInfo, CurrencyInfo, WeatherInfo } from '@/types';
+import { API_CONFIG, FALLBACK_DATA } from '@/config/apis';
 
 // Mock data for components that don't have free APIs
 const mockData = {
@@ -167,7 +168,7 @@ export const fetchCurrencyData = async (destination: string): Promise<CurrencyIn
   }
 };
 
-// Fetch weather data from Open-Meteo API
+// Fetch weather data from OpenWeatherMap API
 export const fetchWeatherData = async (destination: string): Promise<WeatherInfo> => {
   try {
     // Get coordinates for the destination (simplified)
@@ -181,56 +182,72 @@ export const fetchWeatherData = async (destination: string): Promise<WeatherInfo
     
     const coords = coordinates[destination as keyof typeof coordinates] || coordinates['Barcelona, Spain'];
     
+    // OpenWeatherMap API call with real API key
     const response = await axios.get(
-      `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`
+      `${API_CONFIG.OPENWEATHER.BASE_URL}${API_CONFIG.OPENWEATHER.ENDPOINTS.CURRENT_WEATHER}?lat=${coords.lat}&lon=${coords.lon}&appid=${API_CONFIG.OPENWEATHER.API_KEY}&units=metric`
     );
     
     const data = response.data;
-    const current = data.current;
-    const daily = data.daily;
     
-    const getWeatherEmoji = (code: number) => {
-      if (code === 0) return '☀️';
-      if (code >= 1 && code <= 3) return '⛅';
-      if (code >= 45 && code <= 48) return '🌫️';
-      if (code >= 51 && code <= 67) return '🌧️';
-      if (code >= 71 && code <= 77) return '❄️';
-      if (code >= 80 && code <= 82) return '🌦️';
-      if (code >= 95 && code <= 99) return '⛈️';
+    // Get weather condition description and emoji
+    const getWeatherEmoji = (main: string, description: string) => {
+      const weather = main.toLowerCase();
+      const desc = description.toLowerCase();
+      
+      if (weather === 'clear') return '☀️';
+      if (weather === 'clouds') return '⛅';
+      if (weather === 'rain' || desc.includes('rain')) return '🌧️';
+      if (weather === 'snow') return '❄️';
+      if (weather === 'thunderstorm') return '⛈️';
+      if (weather === 'drizzle') return '🌦️';
+      if (weather === 'mist' || weather === 'fog' || weather === 'haze') return '🌫️';
+      if (weather === 'smoke' || weather === 'dust' || weather === 'sand') return '🌫️';
+      if (weather === 'ash' || weather === 'squall' || weather === 'tornado') return '🌪️';
       return '🌤️';
     };
     
+    // Get forecast data (5-day forecast)
+    const forecastResponse = await axios.get(
+      `${API_CONFIG.OPENWEATHER.BASE_URL}${API_CONFIG.OPENWEATHER.ENDPOINTS.FORECAST}?lat=${coords.lat}&lon=${coords.lon}&appid=${API_CONFIG.OPENWEATHER.API_KEY}&units=metric`
+    );
+    
+    const forecastData = forecastResponse.data;
+    const todayForecast = forecastData.list[0]; // Current day forecast
+    
     return {
       current: {
-        temperature: Math.round(current.temperature_2m),
-        condition: current.weather_code === 0 ? 'Clear sky' : 'Variable',
-        emoji: getWeatherEmoji(current.weather_code),
-        humidity: current.relative_humidity_2m,
-        windSpeed: Math.round(current.wind_speed_10m)
+        temperature: Math.round(data.main.temp),
+        condition: data.weather[0].description,
+        emoji: getWeatherEmoji(data.weather[0].main, data.weather[0].description),
+        humidity: data.main.humidity,
+        windSpeed: Math.round(data.wind.speed * 3.6) // Convert m/s to km/h
       },
-      forecast: {
-        high: Math.round(daily.temperature_2m_max[0]),
-        low: Math.round(daily.temperature_2m_min[0]),
-        condition: daily.weather_code[0] === 0 ? 'Clear sky' : 'Variable',
-        emoji: getWeatherEmoji(daily.weather_code[0])
-      }
+              forecast: {
+          high: Math.round(todayForecast.main.temp_max),
+          low: Math.round(todayForecast.main.temp_min),
+          condition: todayForecast.weather[0].description,
+          emoji: getWeatherEmoji(todayForecast.weather[0].main, todayForecast.weather[0].description)
+        }
     };
   } catch (error) {
-    console.error('Error fetching weather data:', error);
-    // Fallback data
+    console.error('Error fetching weather data from OpenWeatherMap:', error);
+    
+    // Enhanced fallback data with more realistic information
+    const fallback = FALLBACK_DATA.WEATHER[destination as keyof typeof FALLBACK_DATA.WEATHER] || FALLBACK_DATA.WEATHER['Barcelona, Spain'];
+    
     return {
       current: {
-        temperature: 22,
-        condition: 'Partly cloudy',
-        emoji: '⛅',
-        humidity: 65,
-        windSpeed: 12
+        temperature: fallback.temp,
+        condition: fallback.condition,
+        emoji: fallback.emoji,
+        humidity: fallback.humidity,
+        windSpeed: fallback.wind
       },
       forecast: {
-        high: 25,
-        low: 18,
-        condition: 'Sunny',
-        emoji: '☀️'
+        high: fallback.temp + 3,
+        low: fallback.temp - 3,
+        condition: fallback.condition,
+        emoji: fallback.emoji
       }
     };
   }

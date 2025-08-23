@@ -88,10 +88,15 @@ src/
 ### External APIs Used
 - **WorldTime API**: Timezone and current time data
 - **ExchangeRate API**: Currency conversion rates
-- **Open-Meteo API**: Weather information and forecasts
+- **OpenWeatherMap API**: Real-time weather information and forecasts (✅ Integrated)
 
-### Mock Data
-For components without free APIs available:
+### Real vs Mock Data
+**Real Data (APIs Integrated):**
+- **Weather**: OpenWeatherMap API with real-time conditions
+- **Timezone**: WorldTime API with current time data
+- **Currency**: ExchangeRate API with live rates
+
+**Mock Data (for components without free APIs):**
 - Travel trends and seasons
 - Local events and attractions
 - Health alerts and security status
