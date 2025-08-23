@@ -73,7 +73,7 @@ export default function Home() {
             <div className="bg-white rounded-xl p-8 shadow-lg border border-gray-100">
               <div className="text-center">
                                  <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                   What you'll get with TravelCue
+                   What you&apos;ll get with TravelCue
                  </h2>
                  <p className="text-gray-600 mb-6">
                    A comprehensive overview of any destination including weather, events, safety, and more

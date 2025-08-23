@@ -1,5 +1,5 @@
 import { AttractionInfo } from '@/types';
-import { MapPin, Star, Navigation } from 'lucide-react';
+import { MapPin, Navigation } from 'lucide-react';
 
 interface AttractionsCardProps {
   attractions: AttractionInfo[];

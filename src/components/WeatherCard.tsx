@@ -46,7 +46,7 @@ export default function WeatherCard({ weather }: WeatherCardProps) {
         {/* Forecast */}
         <div className="bg-gray-50 rounded-lg p-3">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700">Today's Forecast</span>
+            <span className="text-sm font-medium text-gray-700">Today&apos;s Forecast</span>
             <span className="text-2xl">{weather.forecast.emoji}</span>
           </div>
           

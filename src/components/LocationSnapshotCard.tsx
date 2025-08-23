@@ -8,7 +8,7 @@ import AttractionsCard from './AttractionsCard';
 import HealthSecurityCard from './HealthSecurityCard';
 import InternetSpeedCard from './InternetSpeedCard';
 import STRAvailabilityCard from './STRAvailabilityCard';
-import { MapPin, Calendar, Clock } from 'lucide-react';
+import { MapPin, Clock } from 'lucide-react';
 
 interface LocationSnapshotCardProps {
   snapshot: LocationSnapshot;

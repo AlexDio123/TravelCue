@@ -1,4 +1,4 @@
-import axios from 'axios';
+import apiClient from './axios-config';
 import { LocationSnapshot, TimezoneInfo, CurrencyInfo, WeatherInfo } from '@/types';
 import { API_CONFIG, FALLBACK_DATA } from '@/config/apis';
 
@@ -74,8 +74,9 @@ const mockData = {
 
 // Get default data for a destination
 const getDefaultData = (destination: string) => {
-  const city = destination.split(',')[0].trim();
-  const country = destination.split(',')[1]?.trim() || '';
+  // Extract city and country for potential future use
+  // const city = destination.split(',')[0].trim();
+  // const country = destination.split(',')[1]?.trim() || '';
   
   return {
     travelTrend: mockData.travelTrend[destination as keyof typeof mockData.travelTrend] || 
@@ -96,9 +97,20 @@ const getDefaultData = (destination: string) => {
 };
 
 // Fetch timezone data from WorldTime API
-export const fetchTimezoneData = async (city: string): Promise<TimezoneInfo> => {
+export const fetchTimezoneData = async (destination: string): Promise<TimezoneInfo> => {
   try {
-    const response = await axios.get(`https://worldtimeapi.org/api/timezone/Europe/Madrid`);
+    // Map destinations to their approximate timezone regions
+    const timezoneMap = {
+      'Barcelona, Spain': 'Europe/Madrid',
+      'Tokyo, Japan': 'Asia/Tokyo',
+      'New York, USA': 'America/New_York',
+      'Bali, Indonesia': 'Asia/Makassar',
+      'Paris, France': 'Europe/Paris'
+    };
+    
+    const timezone = timezoneMap[destination as keyof typeof timezoneMap] || 'Europe/London';
+    
+    const response = await apiClient.get(`https://worldtimeapi.org/api/timezone/${timezone}`);
     const data = response.data;
     
     const userTime = new Date();
@@ -112,13 +124,28 @@ export const fetchTimezoneData = async (city: string): Promise<TimezoneInfo> => 
       isDaylight: data.dst
     };
   } catch (error) {
-    console.error('Error fetching timezone data:', error);
-    // Fallback data
+    console.error('Error fetching timezone data from WorldTime API:', error);
+    
+    // Enhanced fallback data based on destination
+    const fallbackData = {
+      'Barcelona, Spain': { timezone: 'Europe/Madrid', diff: 1, dst: true },
+      'Tokyo, Japan': { timezone: 'Asia/Tokyo', diff: 8, dst: false },
+      'New York, USA': { timezone: 'America/New_York', diff: -5, dst: true },
+      'Bali, Indonesia': { timezone: 'Asia/Makassar', diff: 7, dst: false },
+      'Paris, France': { timezone: 'Europe/Paris', diff: 1, dst: true }
+    };
+    
+    const fallback = fallbackData[destination as keyof typeof fallbackData] || 
+                     { timezone: 'UTC', diff: 0, dst: false };
+    
+    const now = new Date();
+    const destinationTime = new Date(now.getTime() + (fallback.diff * 60 * 60 * 1000));
+    
     return {
-      timezone: 'UTC',
-      currentTime: new Date().toISOString(),
-      timeDifference: '+0h',
-      isDaylight: false
+      timezone: fallback.timezone,
+      currentTime: destinationTime.toISOString(),
+      timeDifference: `${fallback.diff >= 0 ? '+' : ''}${fallback.diff}h`,
+      isDaylight: fallback.dst
     };
   }
 };
@@ -126,7 +153,7 @@ export const fetchTimezoneData = async (city: string): Promise<TimezoneInfo> => 
 // Fetch currency data from ExchangeRate API
 export const fetchCurrencyData = async (destination: string): Promise<CurrencyInfo> => {
   try {
-    const response = await axios.get('https://api.exchangerate.host/latest?base=USD');
+    const response = await apiClient.get('https://api.exchangerate.host/latest?base=USD');
     const data = response.data;
     
     // Determine currency based on destination
@@ -183,7 +210,7 @@ export const fetchWeatherData = async (destination: string): Promise<WeatherInfo
     const coords = coordinates[destination as keyof typeof coordinates] || coordinates['Barcelona, Spain'];
     
     // OpenWeatherMap API call with real API key
-    const response = await axios.get(
+    const response = await apiClient.get(
       `${API_CONFIG.OPENWEATHER.BASE_URL}${API_CONFIG.OPENWEATHER.ENDPOINTS.CURRENT_WEATHER}?lat=${coords.lat}&lon=${coords.lon}&appid=${API_CONFIG.OPENWEATHER.API_KEY}&units=metric`
     );
     
@@ -207,7 +234,7 @@ export const fetchWeatherData = async (destination: string): Promise<WeatherInfo
     };
     
     // Get forecast data (5-day forecast)
-    const forecastResponse = await axios.get(
+    const forecastResponse = await apiClient.get(
       `${API_CONFIG.OPENWEATHER.BASE_URL}${API_CONFIG.OPENWEATHER.ENDPOINTS.FORECAST}?lat=${coords.lat}&lon=${coords.lon}&appid=${API_CONFIG.OPENWEATHER.API_KEY}&units=metric`
     );
     
@@ -256,11 +283,22 @@ export const fetchWeatherData = async (destination: string): Promise<WeatherInfo
 // Fetch complete location snapshot
 export const fetchLocationSnapshot = async (destination: string): Promise<LocationSnapshot> => {
   try {
-    const [timezone, currency, weather] = await Promise.all([
+    // Use Promise.allSettled to handle individual API failures gracefully
+    const results = await Promise.allSettled([
       fetchTimezoneData(destination),
       fetchCurrencyData(destination),
       fetchWeatherData(destination)
     ]);
+    
+    // Extract successful results or use fallbacks
+    const timezone = results[0].status === 'fulfilled' ? results[0].value : 
+      await fetchTimezoneData(destination); // This will use fallback
+    
+    const currency = results[1].status === 'fulfilled' ? results[1].value : 
+      await fetchCurrencyData(destination); // This will use fallback
+    
+    const weather = results[2].status === 'fulfilled' ? results[2].value : 
+      await fetchWeatherData(destination); // This will use fallback
     
     const defaultData = getDefaultData(destination);
     
@@ -273,6 +311,41 @@ export const fetchLocationSnapshot = async (destination: string): Promise<Locati
     };
   } catch (error) {
     console.error('Error fetching location snapshot:', error);
-    throw new Error('Failed to fetch location data');
+    
+    // Return a complete snapshot with fallback data if everything fails
+    const defaultData = getDefaultData(destination);
+    
+    return {
+      destination,
+      timezone: {
+        timezone: 'UTC',
+        currentTime: new Date().toISOString(),
+        timeDifference: '+0h',
+        isDaylight: false
+      },
+      currency: {
+        code: 'USD',
+        symbol: '$',
+        rate: 1.0,
+        trend: 'stable',
+        trendPercentage: 0
+      },
+      weather: {
+        current: {
+          temperature: 22,
+          condition: 'Partly cloudy',
+          emoji: '⛅',
+          humidity: 65,
+          windSpeed: 12
+        },
+        forecast: {
+          high: 25,
+          low: 18,
+          condition: 'Sunny',
+          emoji: '☀️'
+        }
+      },
+      ...defaultData
+    };
   }
 };
