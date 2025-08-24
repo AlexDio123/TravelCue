@@ -1,5 +1,5 @@
 import { WeatherInfo } from '@/types';
-import { Calendar, Lightbulb, Thermometer, CloudRain } from 'lucide-react';
+import { Lightbulb, Thermometer } from 'lucide-react';
 import { useFormattedDate } from '@/hooks/useClientDate';
 
 interface SeasonCardProps {
