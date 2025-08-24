@@ -70,7 +70,7 @@ export interface HealthAlert {
 }
 
 export interface SecurityInfo {
-  status: 'safe' | 'caution' | 'warning';
+  status: 'safe' | 'caution' | 'warning' | 'alert';
   message: string;
   emoji: string;
   details?: string;
