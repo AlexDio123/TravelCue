@@ -41,7 +41,7 @@ export default function LocationSnapshotCard({ snapshot }: LocationSnapshotCardP
           <EventsCard events={snapshot.events} />
           <AttractionsCard attractions={snapshot.attractions} />
           <HealthSecurityCard 
-            healthAlerts={snapshot.healthAlerts} 
+            healthAlerts={snapshot.health} 
             security={snapshot.security} 
           />
           

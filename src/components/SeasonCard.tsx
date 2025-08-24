@@ -103,7 +103,7 @@ export default function SeasonCard({ weather }: SeasonCardProps) {
         
         {/* Forecast */}
         <div className="flex items-center justify-between p-2 bg-green-50 rounded-lg">
-          <span className="text-sm text-gray-600">Today's Range</span>
+          <span className="text-sm text-gray-600">Today&apos;s Range</span>
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-green-700">High: {weather.forecast.high}°C</span>
             <span className="text-sm font-medium text-blue-700">Low: {weather.forecast.low}°C</span>

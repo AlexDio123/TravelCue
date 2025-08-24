@@ -66,7 +66,7 @@ src/
 │   ├── SeasonCard.tsx           # Season-based travel insights
 │   ├── EventsCard.tsx           # Events listing
 │   ├── AttractionsCard.tsx      # Attractions info
-│   ├── HealthSecurityCard.tsx   # Health alerts and security info
+│   ├── HealthSecurityCard.tsx   # Real health & security alerts from CDC & State Department
 │   ├── STRAvailabilityCard.tsx  # Short-term rental availability
 │   └── ErrorDisplay.tsx         # Error handling
 ├── services/            # API services

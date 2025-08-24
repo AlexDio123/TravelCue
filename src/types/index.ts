@@ -5,7 +5,7 @@ export interface LocationSnapshot {
   weather: WeatherInfo;
   events: EventInfo[];
   attractions: AttractionInfo[];
-  healthAlerts: HealthAlert;
+  health: HealthAlert;
   security: SecurityInfo;
   strAvailability: STRAvailability;
 }
@@ -63,7 +63,7 @@ export interface AttractionInfo {
 }
 
 export interface HealthAlert {
-  status: 'safe' | 'warning' | 'alert';
+  status: 'safe' | 'warning' | 'alert' | 'caution';
   message: string;
   emoji: string;
   details?: string;

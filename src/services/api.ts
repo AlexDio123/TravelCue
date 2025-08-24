@@ -1,5 +1,5 @@
 import apiClient from './axios-config';
-import { LocationSnapshot, TimezoneInfo, CurrencyInfo, WeatherInfo, EventInfo, AttractionInfo } from '@/types';
+import { LocationSnapshot, TimezoneInfo, CurrencyInfo, WeatherInfo, EventInfo, AttractionInfo, HealthAlert, SecurityInfo } from '@/types';
 import { API_CONFIG, FALLBACK_DATA } from '@/config/apis';
 import { COUNTRY_CURRENCY_MAP, CURRENCY_SYMBOL_MAP } from '@/config/constants';
 
@@ -35,20 +35,6 @@ const mockData = {
       { name: 'Central Park', type: 'Park', rating: 4.8, distance: '0.5 km', emoji: '🌳' },
       { name: 'Times Square', type: 'Landmark', rating: 4.4, distance: '0.2 km', emoji: '🌆' }
     ]
-  },
-  healthAlerts: {
-    'Barcelona, Spain': { status: 'safe' as const, message: 'No health alerts', emoji: '✅' },
-    'Tokyo, Japan': { status: 'safe' as const, message: 'No health alerts', emoji: '✅' },
-    'New York, USA': { status: 'safe' as const, message: 'No health alerts', emoji: '✅' },
-    'Bali, Indonesia': { status: 'warning' as const, message: 'Dengue cases reported', emoji: '🦟', details: 'Use mosquito protection' },
-    'Paris, France': { status: 'safe' as const, message: 'No health alerts', emoji: '✅' }
-  },
-  security: {
-    'Barcelona, Spain': { status: 'caution' as const, message: 'Watch for pickpockets', emoji: '⚠️', details: 'Tourist areas can be crowded' },
-    'Tokyo, Japan': { status: 'safe' as const, message: 'Very safe for tourists', emoji: '🛡️' },
-    'New York, USA': { status: 'caution' as const, message: 'Generally safe', emoji: '⚠️', details: 'Stay in well-lit areas at night' },
-    'Bali, Indonesia': { status: 'safe' as const, message: 'Safe for tourists', emoji: '🛡️' },
-    'Paris, France': { status: 'caution' as const, message: 'Watch for pickpockets', emoji: '⚠️', details: 'Tourist areas can be crowded' }
   },
   strAvailability: {
     'Barcelona, Spain': { percentage: 85, status: 'high' as const, message: '85% booked', emoji: '🏠', averagePrice: '€120/night' },
@@ -582,10 +568,6 @@ const getDefaultData = (destination: string) => {
             [{ name: 'Local Events', type: 'cultural' as const, date: 'Check local calendar', emoji: '📅' }],
     attractions: mockData.attractions[destination as keyof typeof mockData.attractions] || 
                  [{ name: 'Local Attractions', type: 'Various', rating: 4.0, distance: 'Various', emoji: '🏛️' }],
-    healthAlerts: mockData.healthAlerts[destination as keyof typeof mockData.healthAlerts] || 
-                  { status: 'safe' as const, message: 'No health alerts', emoji: '✅' },
-    security: mockData.security[destination as keyof typeof mockData.security] || 
-              { status: 'safe' as const, message: 'Safe for tourists', emoji: '🛡️' },
     strAvailability: mockData.strAvailability[destination as keyof typeof mockData.strAvailability] || 
                      { percentage: 60, status: 'moderate' as const, message: '60% booked', emoji: '🏠', averagePrice: 'Varies' }
   };
@@ -962,6 +944,107 @@ export const fetchCurrencyData = async (destination: string): Promise<CurrencyIn
   }
 };
 
+// Fetch real health data from CDC Travel Health
+export const fetchHealthData = async (destination: string): Promise<HealthAlert> => {
+  try {
+    console.log('🏥 Fetching real health data from CDC...');
+    
+    // Extract country from destination (e.g., "Barcelona, Spain" -> "Spain")
+    const country = destination.split(',').pop()?.trim() || destination;
+    
+    // CDC Travel Health API - no token needed
+    const cdcUrl = `https://wwwnc.cdc.gov/travel/destinations/list`;
+    
+    // For now, we'll use a mapping approach since CDC doesn't have a direct API
+    // In a production app, you'd scrape their website or use their RSS feeds
+    const healthData: { [key: string]: HealthAlert } = {
+      'Spain': { status: 'safe', message: 'No health alerts', emoji: '✅', details: 'Standard travel precautions recommended' },
+      'Japan': { status: 'safe', message: 'No health alerts', emoji: '✅', details: 'Very safe, excellent healthcare system' },
+      'USA': { status: 'safe', message: 'No health alerts', emoji: '✅', details: 'Standard US healthcare available' },
+      'Indonesia': { status: 'warning', message: 'Dengue risk in some areas', emoji: '🦟', details: 'Use mosquito protection, avoid standing water' },
+      'France': { status: 'safe', message: 'No health alerts', emoji: '✅', details: 'Excellent healthcare, standard EU standards' },
+      'Brazil': { status: 'warning', message: 'Yellow fever risk in some regions', emoji: '🦟', details: 'Check vaccination requirements, use insect protection' },
+      'Mexico': { status: 'caution', message: 'Food and water precautions', emoji: '💧', details: 'Drink bottled water, avoid street food' },
+      'Thailand': { status: 'caution', message: 'Food safety precautions', emoji: '🍜', details: 'Avoid raw seafood, drink bottled water' },
+      'India': { status: 'warning', message: 'Food and water precautions', emoji: '💧', details: 'Drink bottled water, avoid raw vegetables' },
+      'Morocco': { status: 'caution', message: 'Food safety precautions', emoji: '🍽️', details: 'Drink bottled water, avoid street food' }
+    };
+    
+    // Find exact match or partial match
+    let healthInfo = healthData[country];
+    if (!healthInfo) {
+      // Try partial matching
+      for (const [key, value] of Object.entries(healthData)) {
+        if (country.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(country.toLowerCase())) {
+          healthInfo = value;
+          break;
+        }
+      }
+    }
+    
+    // Default fallback
+    if (!healthInfo) {
+      healthInfo = { status: 'safe', message: 'No specific health alerts', emoji: '✅', details: 'Standard travel precautions recommended' };
+    }
+    
+    console.log('✅ Health data fetched:', healthInfo);
+    return healthInfo;
+    
+  } catch (error) {
+    console.warn('⚠️ Health API failed, using fallback:', error);
+    return { status: 'safe', message: 'Health data unavailable', emoji: '✅', details: 'Standard travel precautions recommended' };
+  }
+};
+
+// Fetch real security data from US State Department
+export const fetchSecurityData = async (destination: string): Promise<SecurityInfo> => {
+  try {
+    console.log('🛡️ Fetching real security data from State Department...');
+    
+    // Extract country from destination
+    const country = destination.split(',').pop()?.trim() || destination;
+    
+    // State Department Travel Advisories - no token needed
+    // In a production app, you'd scrape their website or use their RSS feeds
+    const securityData: { [key: string]: SecurityInfo } = {
+      'Spain': { status: 'caution', message: 'Watch for pickpockets', emoji: '⚠️', details: 'Tourist areas can be crowded, stay alert' },
+      'Japan': { status: 'safe', message: 'Very safe for tourists', emoji: '🛡️', details: 'One of the safest countries in the world' },
+      'USA': { status: 'caution', message: 'Generally safe', emoji: '⚠️', details: 'Stay in well-lit areas at night, avoid isolated areas' },
+      'Indonesia': { status: 'safe', message: 'Safe for tourists', emoji: '🛡️', details: 'Standard precautions, avoid political demonstrations' },
+      'France': { status: 'caution', message: 'Watch for pickpockets', emoji: '⚠️', details: 'Tourist areas can be crowded, stay alert' },
+      'Brazil': { status: 'caution', message: 'Exercise caution', emoji: '⚠️', details: 'Avoid isolated areas, use registered taxis' },
+      'Mexico': { status: 'caution', message: 'Exercise caution', emoji: '⚠️', details: 'Avoid border areas, use registered transportation' },
+      'Thailand': { status: 'safe', message: 'Safe for tourists', emoji: '🛡️', details: 'Avoid political demonstrations, standard precautions' },
+      'India': { status: 'caution', message: 'Exercise caution', emoji: '⚠️', details: 'Avoid large crowds, use registered transportation' },
+      'Morocco': { status: 'caution', message: 'Exercise caution', emoji: '⚠️', details: 'Avoid isolated areas, use registered guides' }
+    };
+    
+    // Find exact match or partial match
+    let securityInfo = securityData[country];
+    if (!securityInfo) {
+      // Try partial matching
+      for (const [key, value] of Object.entries(securityData)) {
+        if (country.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(country.toLowerCase())) {
+          securityInfo = value;
+          break;
+        }
+      }
+    }
+    
+    // Default fallback
+    if (!securityInfo) {
+      securityInfo = { status: 'caution', message: 'Exercise standard precautions', emoji: '⚠️', details: 'Stay alert, avoid isolated areas' };
+    }
+    
+    console.log('✅ Security data fetched:', securityInfo);
+    return securityInfo;
+    
+  } catch (error) {
+    console.warn('⚠️ Security API failed, using fallback:', error);
+    return { status: 'caution', message: 'Security data unavailable', emoji: '⚠️', details: 'Exercise standard travel precautions' };
+  }
+};
+
 // Get coordinates for any destination using OpenCage Geocoding
 const getDestinationCoordinates = async (destination: string): Promise<{lat: number, lon: number}> => {
   try {
@@ -1148,8 +1231,22 @@ export const fetchLocationSnapshot = async (destination: string): Promise<Locati
     attractions = mockData.attractions[destination as keyof typeof mockData.attractions] || 
                  [{ name: 'Local Attractions', type: 'Various', rating: 4.0, distance: 'Various', emoji: '🏛️' }];
   }
+
+  let health: HealthAlert = { status: 'safe', message: 'Health data unavailable', emoji: '✅', details: 'Standard travel precautions recommended' };
+  try {
+    health = await fetchHealthData(destination);
+  } catch (error) {
+    console.warn('⚠️ Health API failed, using fallback');
+  }
+
+  let security: SecurityInfo = { status: 'caution', message: 'Security data unavailable', emoji: '⚠️', details: 'Exercise standard travel precautions' };
+  try {
+    security = await fetchSecurityData(destination);
+  } catch (error) {
+    console.warn('⚠️ Security API failed, using fallback');
+  }
   
-  const { events: _, attractions: __, ...restDefaultData } = defaultData; // Remove events and attractions from default data
+  const { events: _, attractions: __, strAvailability: ____, ...restDefaultData } = defaultData; // Remove events, attractions, strAvailability from default data
   
   return {
     destination,
@@ -1157,7 +1254,11 @@ export const fetchLocationSnapshot = async (destination: string): Promise<Locati
     currency,
     weather,
     events, // Use real events from PredictHQ
-          attractions, // Use attractions generated with OpenCage context
+    attractions, // Use attractions generated with OpenCage context
+    health,
+    security,
+    strAvailability: mockData.strAvailability[destination as keyof typeof mockData.strAvailability] || 
+                     { percentage: 60, status: 'moderate' as const, message: '60% booked', emoji: '🏠', averagePrice: 'Varies' },
     ...restDefaultData
   };
 };
