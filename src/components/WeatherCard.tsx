@@ -1,11 +1,14 @@
 import { WeatherInfo } from '@/types';
 import { Thermometer, Cloud, Wind, Droplets } from 'lucide-react';
+import { useFormattedDate } from '@/hooks/useClientDate';
 
 interface WeatherCardProps {
   weather: WeatherInfo;
 }
 
 export default function WeatherCard({ weather }: WeatherCardProps) {
+  const { formatted: lastUpdated, isClient } = useFormattedDate('time');
+  
   return (
     <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
       <div className="flex items-center gap-2 mb-3">
@@ -73,7 +76,7 @@ export default function WeatherCard({ weather }: WeatherCardProps) {
         <div className="pt-2 border-t border-gray-100">
           <div className="flex items-center justify-between text-xs text-gray-500">
             <span>Last updated</span>
-            <span>{new Date().toLocaleTimeString()}</span>
+            <span>{isClient ? lastUpdated : '--:--'}</span>
           </div>
         </div>
       </div>

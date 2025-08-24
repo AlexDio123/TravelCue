@@ -1,11 +1,14 @@
 import { STRAvailability } from '@/types';
 import { Home, Calendar, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
+import { useFormattedDate } from '@/hooks/useClientDate';
 
 interface STRAvailabilityCardProps {
   strAvailability: STRAvailability;
 }
 
 export default function STRAvailabilityCard({ strAvailability }: STRAvailabilityCardProps) {
+  const { formatted: lastUpdated, isClient } = useFormattedDate('date');
+  
   const getAvailabilityColor = () => {
     switch (strAvailability.status) {
       case 'high':
@@ -124,7 +127,7 @@ export default function STRAvailabilityCard({ strAvailability }: STRAvailability
         <div className="pt-2 border-t border-gray-100">
           <div className="flex items-center justify-between text-xs text-gray-500">
             <span>Last updated</span>
-            <span>{new Date().toLocaleDateString()}</span>
+            <span>{isClient ? lastUpdated : '--/--/----'}</span>
           </div>
         </div>
       </div>

@@ -8,6 +8,7 @@ import AttractionsCard from './AttractionsCard';
 import HealthSecurityCard from './HealthSecurityCard';
 import InternetSpeedCard from './InternetSpeedCard';
 import STRAvailabilityCard from './STRAvailabilityCard';
+import { useFormattedDate } from '@/hooks/useClientDate';
 import { MapPin, Clock } from 'lucide-react';
 
 interface LocationSnapshotCardProps {
@@ -15,6 +16,8 @@ interface LocationSnapshotCardProps {
 }
 
 export default function LocationSnapshotCard({ snapshot }: LocationSnapshotCardProps) {
+  const { formatted: lastUpdated, isClient } = useFormattedDate('datetime');
+  
   return (
     <div className="max-w-7xl mx-auto p-6">
       {/* Header */}
@@ -24,7 +27,7 @@ export default function LocationSnapshotCard({ snapshot }: LocationSnapshotCardP
           <h1 className="text-3xl font-bold">{snapshot.destination}</h1>
         </div>
         <p className="text-blue-100 text-lg">
-          Complete travel overview • Last updated {new Date().toLocaleString()}
+          Complete travel overview • Last updated {isClient ? lastUpdated : '--/--/---- --:--'}
         </p>
       </div>
       

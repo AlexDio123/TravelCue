@@ -1,11 +1,14 @@
 import { TravelTrend } from '@/types';
 import { Calendar, Lightbulb } from 'lucide-react';
+import { useFormattedDate } from '@/hooks/useClientDate';
 
 interface TravelTrendCardProps {
   travelTrend: TravelTrend;
 }
 
 export default function TravelTrendCard({ travelTrend }: TravelTrendCardProps) {
+  const { formatted: currentPeriod, isClient } = useFormattedDate('month-year');
+  
   const getSeasonColor = () => {
     switch (travelTrend.season) {
       case 'high':
@@ -59,7 +62,7 @@ export default function TravelTrendCard({ travelTrend }: TravelTrendCardProps) {
         <div className="pt-2 border-t border-gray-100">
           <div className="flex items-center justify-between text-xs text-gray-500">
             <span>Current period</span>
-            <span>{new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+            <span>{isClient ? currentPeriod : '---- ----'}</span>
           </div>
         </div>
       </div>

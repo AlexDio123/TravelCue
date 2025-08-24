@@ -1,5 +1,6 @@
 import { HealthAlert, SecurityInfo } from '@/types';
 import { Shield, AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { useFormattedDate } from '@/hooks/useClientDate';
 
 interface HealthSecurityCardProps {
   healthAlerts: HealthAlert;
@@ -7,6 +8,8 @@ interface HealthSecurityCardProps {
 }
 
 export default function HealthSecurityCard({ healthAlerts, security }: HealthSecurityCardProps) {
+  const { formatted: lastUpdated, isClient } = useFormattedDate('date');
+  
   const getHealthStatusIcon = () => {
     switch (healthAlerts.status) {
       case 'safe':
@@ -108,7 +111,7 @@ export default function HealthSecurityCard({ healthAlerts, security }: HealthSec
         <div className="pt-2 border-t border-gray-100">
           <div className="flex items-center justify-between text-xs text-gray-500">
             <span>Last updated</span>
-            <span>{new Date().toLocaleDateString()}</span>
+            <span>{isClient ? lastUpdated : '--/--/----'}</span>
           </div>
         </div>
       </div>

@@ -3,7 +3,7 @@ export const API_CONFIG = {
   // OpenWeatherMap API
   OPENWEATHER: {
     BASE_URL: 'https://api.openweathermap.org/data/2.5',
-    API_KEY: '89a7203efe73d449bdc59a1df64ce650',
+    API_KEY: process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY || '89a7203efe73d449bdc59a1df64ce650',
     ENDPOINTS: {
       CURRENT_WEATHER: '/weather',
       FORECAST: '/forecast'
@@ -36,13 +36,15 @@ export const API_CONFIG = {
   //   }
   // },
   
-  // EVENTBRITE: {
-  //   BASE_URL: 'https://www.eventbriteapi.com/v3',
-  //   API_KEY: process.env.EVENTBRITE_PRIVATE_TOKEN || '',
-  //   ENDPOINTS: {
-  //     EVENTS_SEARCH: '/events/search'
-  //   }
-  // }
+  // Eventbrite API for real events
+  EVENTBRITE: {
+    BASE_URL: 'https://www.eventbriteapi.com/v3',
+    API_KEY: process.env.NEXT_PUBLIC_EVENTBRITE_PRIVATE_TOKEN || 'REUB5TT5TEJEPCQIIB4I',
+    ENDPOINTS: {
+      EVENTS_SEARCH: '/events/search',
+      VENUES: '/venues'
+    }
+  }
 };
 
 // Rate limiting configuration
@@ -58,6 +60,10 @@ export const RATE_LIMITS = {
   EXCHANGERATE: {
     REQUESTS_PER_MINUTE: 5,
     REQUESTS_PER_DAY: 100
+  },
+  EVENTBRITE: {
+    REQUESTS_PER_MINUTE: 10,
+    REQUESTS_PER_DAY: 1000
   }
 };
 

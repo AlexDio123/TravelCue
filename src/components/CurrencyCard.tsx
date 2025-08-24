@@ -1,11 +1,14 @@
 import { CurrencyInfo } from '@/types';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { useFormattedDate } from '@/hooks/useClientDate';
 
 interface CurrencyCardProps {
   currency: CurrencyInfo;
 }
 
 export default function CurrencyCard({ currency }: CurrencyCardProps) {
+  const { formatted: lastUpdated, isClient } = useFormattedDate('date');
+  
   const getTrendIcon = () => {
     switch (currency.trend) {
       case 'up':
@@ -66,7 +69,7 @@ export default function CurrencyCard({ currency }: CurrencyCardProps) {
         <div className="pt-2 border-t border-gray-100">
           <div className="flex items-center justify-between text-xs text-gray-500">
             <span>Last updated</span>
-            <span>{new Date().toLocaleDateString()}</span>
+            <span>{isClient ? lastUpdated : '--/--/----'}</span>
           </div>
         </div>
       </div>

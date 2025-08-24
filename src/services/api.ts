@@ -1,5 +1,5 @@
 import apiClient from './axios-config';
-import { LocationSnapshot, TimezoneInfo, CurrencyInfo, WeatherInfo } from '@/types';
+import { LocationSnapshot, TimezoneInfo, CurrencyInfo, WeatherInfo, EventInfo } from '@/types';
 import { API_CONFIG, FALLBACK_DATA } from '@/config/apis';
 
 // Mock data for components that don't have free APIs
@@ -72,6 +72,80 @@ const mockData = {
   }
 };
 
+// Fetch real events from Eventbrite API
+export const fetchEventsData = async (destination: string): Promise<EventInfo[]> => {
+  try {
+    console.log('🎭 Fetching events from Eventbrite API...');
+    
+    // Extract city name for search
+    const city = destination.split(',')[0].trim();
+    
+    // Search for events in the city
+    const response = await apiClient.get(
+      `${API_CONFIG.EVENTBRITE.BASE_URL}${API_CONFIG.EVENTBRITE.ENDPOINTS.EVENTS_SEARCH}`,
+      {
+        params: {
+          'location.address': city,
+          'expand': 'venue',
+          'status': 'live',
+          'start_date.range_start': new Date().toISOString(),
+          'start_date.range_end': new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Next 30 days
+          'limit': 5
+        },
+        headers: {
+          'Authorization': `Bearer ${API_CONFIG.EVENTBRITE.API_KEY}`
+        }
+      }
+    );
+    
+    if (response.data && response.data.events) {
+      const events = response.data.events.map((event: any) => {
+        // Determine event type based on category
+        let eventType: 'music' | 'sports' | 'cultural' | 'other' = 'other';
+        let emoji = '📅';
+        
+        if (event.category && event.category.name) {
+          const category = event.category.name.toLowerCase();
+          if (category.includes('music') || category.includes('concert')) {
+            eventType = 'music';
+            emoji = '🎸';
+          } else if (category.includes('sport') || category.includes('fitness')) {
+            eventType = 'sports';
+            emoji = '⚽';
+          } else if (category.includes('art') || category.includes('culture') || category.includes('food')) {
+            eventType = 'cultural';
+            emoji = '🎭';
+          }
+        }
+        
+        return {
+          name: event.name.text,
+          type: eventType,
+          date: new Date(event.start.local).toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric',
+            year: 'numeric' 
+          }),
+          emoji: emoji,
+          venue: event.venue?.name || 'Various venues'
+        };
+      });
+      
+      console.log(`✅ Found ${events.length} events from Eventbrite`);
+      return events;
+    }
+    
+    throw new Error('Invalid API response structure');
+    
+  } catch (error) {
+    console.warn('⚠️ Eventbrite API failed, using fallback events:', error);
+    
+    // Return fallback events data
+    return mockData.events[destination as keyof typeof mockData.events] || 
+           [{ name: 'Local Events', type: 'cultural' as const, date: 'Check local calendar', emoji: '📅' }];
+  }
+};
+
 // Get default data for a destination
 const getDefaultData = (destination: string) => {
   // Extract city and country for potential future use
@@ -96,8 +170,20 @@ const getDefaultData = (destination: string) => {
   };
 };
 
-// Fetch timezone data from WorldTime API
+// Fetch timezone data with multiple fallback strategies
 export const fetchTimezoneData = async (destination: string): Promise<TimezoneInfo> => {
+  // Enhanced fallback data based on destination
+  const fallbackData = {
+    'Barcelona, Spain': { timezone: 'Europe/Madrid', diff: 1, dst: true },
+    'Tokyo, Japan': { timezone: 'Asia/Tokyo', diff: 9, dst: false },
+    'New York, USA': { timezone: 'America/New_York', diff: -5, dst: true },
+    'Bali, Indonesia': { timezone: 'Asia/Makassar', diff: 8, dst: false },
+    'Paris, France': { timezone: 'Europe/Paris', diff: 1, dst: true }
+  };
+  
+  const fallback = fallbackData[destination as keyof typeof fallbackData] || 
+                   { timezone: 'UTC', diff: 0, dst: false };
+  
   try {
     // Map destinations to their approximate timezone regions
     const timezoneMap = {
@@ -110,34 +196,32 @@ export const fetchTimezoneData = async (destination: string): Promise<TimezoneIn
     
     const timezone = timezoneMap[destination as keyof typeof timezoneMap] || 'Europe/London';
     
-    const response = await apiClient.get(`https://worldtimeapi.org/api/timezone/${timezone}`);
+    // Try WorldTime API with shorter timeout
+    const response = await apiClient.get(`https://worldtimeapi.org/api/timezone/${timezone}`, {
+      timeout: 3000 // 3 second timeout
+    });
+    
     const data = response.data;
     
-    const userTime = new Date();
-    const destinationTime = new Date(data.datetime);
-    const diffHours = Math.round((destinationTime.getTime() - userTime.getTime()) / (1000 * 60 * 60));
+    if (data && data.datetime) {
+      const userTime = new Date();
+      const destinationTime = new Date(data.datetime);
+      const diffHours = Math.round((destinationTime.getTime() - userTime.getTime()) / (1000 * 60 * 60));
+      
+      return {
+        timezone: data.timezone,
+        currentTime: data.datetime,
+        timeDifference: `${diffHours >= 0 ? '+' : ''}${diffHours}h`,
+        isDaylight: data.dst || false
+      };
+    }
     
-    return {
-      timezone: data.timezone,
-      currentTime: data.datetime,
-      timeDifference: `${diffHours >= 0 ? '+' : ''}${diffHours}h`,
-      isDaylight: data.dst
-    };
+    throw new Error('Invalid API response');
+    
   } catch (error) {
-    console.error('Error fetching timezone data from WorldTime API:', error);
+    console.warn('WorldTime API failed, using fallback data:', error);
     
-    // Enhanced fallback data based on destination
-    const fallbackData = {
-      'Barcelona, Spain': { timezone: 'Europe/Madrid', diff: 1, dst: true },
-      'Tokyo, Japan': { timezone: 'Asia/Tokyo', diff: 8, dst: false },
-      'New York, USA': { timezone: 'America/New_York', diff: -5, dst: true },
-      'Bali, Indonesia': { timezone: 'Asia/Makassar', diff: 7, dst: false },
-      'Paris, France': { timezone: 'Europe/Paris', diff: 1, dst: true }
-    };
-    
-    const fallback = fallbackData[destination as keyof typeof fallbackData] || 
-                     { timezone: 'UTC', diff: 0, dst: false };
-    
+    // Calculate current time in destination timezone using fallback
     const now = new Date();
     const destinationTime = new Date(now.getTime() + (fallback.diff * 60 * 60 * 1000));
     
@@ -150,11 +234,19 @@ export const fetchTimezoneData = async (destination: string): Promise<TimezoneIn
   }
 };
 
-// Fetch currency data from ExchangeRate API
+// Fetch currency data from ExchangeRate API with robust error handling
 export const fetchCurrencyData = async (destination: string): Promise<CurrencyInfo> => {
   try {
+    console.log('💰 Fetching currency data from ExchangeRate API...');
+    
     const response = await apiClient.get('https://api.exchangerate.host/latest?base=USD');
     const data = response.data;
+    
+    // Validate API response
+    if (!data || !data.rates || typeof data.rates !== 'object') {
+      console.warn('⚠️ Invalid API response from ExchangeRate, using fallback');
+      throw new Error('Invalid API response structure');
+    }
     
     // Determine currency based on destination
     let currencyCode = 'EUR';
@@ -171,9 +263,17 @@ export const fetchCurrencyData = async (destination: string): Promise<CurrencyIn
       currencySymbol = 'Rp';
     }
     
-    const rate = data.rates[currencyCode] || 1;
+    // Check if the currency code exists in the rates
+    if (!data.rates[currencyCode]) {
+      console.warn(`⚠️ Currency ${currencyCode} not found in API response, using fallback`);
+      throw new Error(`Currency ${currencyCode} not available`);
+    }
+    
+    const rate = data.rates[currencyCode];
     const trend = Math.random() > 0.5 ? 'up' : 'down';
     const trendPercentage = Math.random() * 5;
+    
+    console.log(`✅ Currency data fetched: ${currencyCode} = ${rate}`);
     
     return {
       code: currencyCode,
@@ -182,13 +282,26 @@ export const fetchCurrencyData = async (destination: string): Promise<CurrencyIn
       trend,
       trendPercentage: parseFloat(trendPercentage.toFixed(2))
     };
+    
   } catch (error) {
-    console.error('Error fetching currency data:', error);
-    // Fallback data
+    console.warn('⚠️ ExchangeRate API failed, using fallback data:', error);
+    
+    // Enhanced fallback data based on destination
+    const fallbackData = {
+      'Barcelona, Spain': { code: 'EUR', symbol: '€', rate: 0.85 },
+      'Tokyo, Japan': { code: 'JPY', symbol: '¥', rate: 150.0 },
+      'New York, USA': { code: 'USD', symbol: '$', rate: 1.0 },
+      'Bali, Indonesia': { code: 'IDR', symbol: 'Rp', rate: 15000.0 },
+      'Paris, France': { code: 'EUR', symbol: '€', rate: 0.85 }
+    };
+    
+    const fallback = fallbackData[destination as keyof typeof fallbackData] || 
+                     { code: 'EUR', symbol: '€', rate: 0.85 };
+    
     return {
-      code: 'EUR',
-      symbol: '€',
-      rate: 1.0,
+      code: fallback.code,
+      symbol: fallback.symbol,
+      rate: fallback.rate,
       trend: 'stable',
       trendPercentage: 0
     };
@@ -280,72 +393,92 @@ export const fetchWeatherData = async (destination: string): Promise<WeatherInfo
   }
 };
 
-// Fetch complete location snapshot
+// Fetch complete location snapshot with robust error handling
 export const fetchLocationSnapshot = async (destination: string): Promise<LocationSnapshot> => {
+  console.log(`🔍 Fetching data for: ${destination}`);
+  
+  // Get default data first
+  const defaultData = getDefaultData(destination);
+  
+  // Initialize with fallback data
+  let timezone: TimezoneInfo = {
+    timezone: 'UTC',
+    currentTime: new Date().toISOString(),
+    timeDifference: '+0h',
+    isDaylight: false
+  };
+  
+  let currency: CurrencyInfo = {
+    code: 'USD',
+    symbol: '$',
+    rate: 1.0,
+    trend: 'stable',
+    trendPercentage: 0
+  };
+  
+  let weather: WeatherInfo = {
+    current: {
+      temperature: 22,
+      condition: 'Partly cloudy',
+      emoji: '⛅',
+      humidity: 65,
+      windSpeed: 12
+    },
+    forecast: {
+      high: 25,
+      low: 18,
+      condition: 'Sunny',
+      emoji: '☀️'
+    }
+  };
+  
+  // Try to fetch real data, but don't fail if APIs are down
   try {
-    // Use Promise.allSettled to handle individual API failures gracefully
-    const results = await Promise.allSettled([
-      fetchTimezoneData(destination),
-      fetchCurrencyData(destination),
-      fetchWeatherData(destination)
-    ]);
-    
-    // Extract successful results or use fallbacks
-    const timezone = results[0].status === 'fulfilled' ? results[0].value : 
-      await fetchTimezoneData(destination); // This will use fallback
-    
-    const currency = results[1].status === 'fulfilled' ? results[1].value : 
-      await fetchCurrencyData(destination); // This will use fallback
-    
-    const weather = results[2].status === 'fulfilled' ? results[2].value : 
-      await fetchWeatherData(destination); // This will use fallback
-    
-    const defaultData = getDefaultData(destination);
-    
-    return {
-      destination,
-      timezone,
-      currency,
-      weather,
-      ...defaultData
-    };
+    console.log('📡 Fetching timezone data...');
+    timezone = await fetchTimezoneData(destination);
+    console.log('✅ Timezone data fetched successfully');
   } catch (error) {
-    console.error('Error fetching location snapshot:', error);
-    
-    // Return a complete snapshot with fallback data if everything fails
-    const defaultData = getDefaultData(destination);
-    
-    return {
-      destination,
-      timezone: {
-        timezone: 'UTC',
-        currentTime: new Date().toISOString(),
-        timeDifference: '+0h',
-        isDaylight: false
-      },
-      currency: {
-        code: 'USD',
-        symbol: '$',
-        rate: 1.0,
-        trend: 'stable',
-        trendPercentage: 0
-      },
-      weather: {
-        current: {
-          temperature: 22,
-          condition: 'Partly cloudy',
-          emoji: '⛅',
-          humidity: 65,
-          windSpeed: 12
-        },
-        forecast: {
-          high: 25,
-          low: 18,
-          condition: 'Sunny',
-          emoji: '☀️'
-        }
-      },
-      ...defaultData
-    };
+    console.warn('⚠️ Timezone API failed, using fallback');
   }
+  
+  try {
+    console.log('💰 Fetching currency data...');
+    currency = await fetchCurrencyData(destination);
+    console.log('✅ Currency data fetched successfully');
+  } catch (error) {
+    console.warn('⚠️ Currency API failed, using fallback');
+  }
+  
+  try {
+    console.log('🌤️ Fetching weather data...');
+    weather = await fetchWeatherData(destination);
+    console.log('✅ Weather data fetched successfully');
+  } catch (error) {
+    console.warn('⚠️ Weather API failed, using fallback');
+  }
+  
+  // Fetch real events from Eventbrite
+  let events: EventInfo[] = [];
+  try {
+    console.log('🎭 Fetching events data...');
+    events = await fetchEventsData(destination);
+    console.log('✅ Events data fetched successfully');
+  } catch (error) {
+    console.warn('⚠️ Events API failed, using fallback');
+    events = mockData.events[destination as keyof typeof mockData.events] || 
+             [{ name: 'Local Events', type: 'cultural' as const, date: 'Check local calendar', emoji: '📅' }];
+  }
+  
+  console.log('🎯 Location snapshot completed successfully');
+  
+  const { events: _, ...restDefaultData } = defaultData; // Remove events from default data
+  
+  return {
+    destination,
+    timezone,
+    currency,
+    weather,
+    events, // Use real events from Eventbrite
+    ...restDefaultData
+  };
 };
