@@ -72,7 +72,7 @@ const mockData = {
   }
 };
 
-// Global destination search using OpenCage Geocoding API (much better than OpenTripMap)
+// Global destination search using OpenCage Geocoding API
 export const searchGlobalDestination = async (query: string): Promise<Array<{name: string, country: string, coordinates: {lat: number, lon: number}}>> => {
   try {
     console.log('🌍 Using OpenCage Geocoding API for destination search...');
@@ -1193,7 +1193,7 @@ export const fetchLocationSnapshot = async (destination: string): Promise<Locati
     console.warn('⚠️ Weather API failed, using fallback');
   }
   
-  // Fetch real events from Eventbrite
+      // Fetch real events from PredictHQ
   let events: EventInfo[] = [];
   try {
     console.log('🎭 Fetching events data...');
@@ -1226,7 +1226,7 @@ export const fetchLocationSnapshot = async (destination: string): Promise<Locati
     timezone,
     currency,
     weather,
-    events, // Use real events from Eventbrite
+    events, // Use real events from PredictHQ
           attractions, // Use attractions generated with OpenCage context
     ...restDefaultData
   };

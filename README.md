@@ -167,7 +167,7 @@ npm run lint         # Run ESLint
 
 ### API Improvements
 - **Google Places API**: Real attraction data
-- **Event APIs**: Ticketmaster, Eventbrite integration
+- **Event APIs**: PredictHQ integration for real events worldwide
 - **Translation**: Multi-language support
 - **Maps Integration**: Interactive location maps
 
