@@ -1,6 +1,7 @@
 import apiClient from './axios-config';
 import { LocationSnapshot, TimezoneInfo, CurrencyInfo, WeatherInfo, EventInfo, AttractionInfo } from '@/types';
 import { API_CONFIG, FALLBACK_DATA } from '@/config/apis';
+import { COUNTRY_CURRENCY_MAP, CURRENCY_SYMBOL_MAP } from '@/config/constants';
 
 // Mock data for components that don't have free APIs
 const mockData = {
@@ -846,38 +847,21 @@ export const fetchTimezoneData = async (destination: string): Promise<TimezoneIn
   }
 };
 
-// Simple currency detection - removed massive hardcoded mapping
-const getCurrencyForCountry = (countryName: string): { code: string; symbol: string } => {
-  // Simple mapping for major currencies only
-  const majorCurrencies: { [key: string]: { code: string; symbol: string } } = {
-    'United States': { code: 'USD', symbol: '$' },
-    'Canada': { code: 'CAD', symbol: 'C$' },
-    'Mexico': { code: 'MXN', symbol: '$' },
-    'Brazil': { code: 'BRL', symbol: 'R$' },
-    'United Kingdom': { code: 'GBP', symbol: '£' },
-    'Germany': { code: 'EUR', symbol: '€' },
-    'France': { code: 'EUR', symbol: '€' },
-    'Spain': { code: 'EUR', symbol: '€' },
-    'Italy': { code: 'EUR', symbol: '€' },
-    'Japan': { code: 'JPY', symbol: '¥' },
-    'China': { code: 'CNY', symbol: '¥' },
-    'Australia': { code: 'AUD', symbol: 'A$' },
-    'India': { code: 'INR', symbol: '₹' }
-  };
-  
-  return majorCurrencies[countryName] || { code: 'USD', symbol: '$' };
-};
-
-    // Enhanced currency detection using OpenCage geocoding
-export const detectCountryFromDestination = async (destination: string): Promise<string> => {
+// Fetch currency data from ExchangeRate API with dynamic country detection
+export const fetchCurrencyData = async (destination: string): Promise<CurrencyInfo> => {
   try {
-    // Detecting country for destination
+    console.log('💰 Fetching currency data for destination:', destination);
     
-    // Try OpenCage Geocoding API for accurate country detection - Using your real API key
+    // Step 1: Use OpenCage API to detect the country
+    console.log('🌍 Detecting country using OpenCage API...');
+    
+    let country = 'Unknown';
+    let countryCode = 'US';
+    let currencyCode = 'USD';
+    let currencySymbol = '$';
+    
     try {
-      // Using OpenCage Geocoding API for country detection
-      
-      // OpenCage Geocoding API with your real key (free tier: 2,500 requests/day)
+      // Use OpenCage Geocoding API to get country information
       const response = await apiClient.get('https://api.opencagedata.com/geocode/v1/json', {
         params: {
           q: destination,
@@ -891,184 +875,93 @@ export const detectCountryFromDestination = async (destination: string): Promise
         const result = response.data.results[0];
         const components = result.components;
         
-        // Extract country from OpenCage response
-        const country = components.country;
-        
-        if (country) {
-          console.log('✅ Country detected via OpenCage:', country);
-          return country;
-        }
-      }
-      
-      console.log('⚠️ OpenCage API failed to detect country, trying fallback...');
-      
-    } catch (opencageError: unknown) {
-      const errorMessage = opencageError instanceof Error ? opencageError.message : 'Unknown error';
-      console.log('⚠️ OpenCage API failed, trying fallback detection:', errorMessage);
-    }
-    
-    // Fallback: try OpenCage global search if direct geocoding failed
-    try {
-      const searchResults = await searchGlobalDestination(destination);
-      if (searchResults.length > 0) {
-        const firstResult = searchResults[0];
-        
-        // OpenCage now provides country directly in the search results
-        if (firstResult.country && firstResult.country !== 'Unknown Country') {
-          console.log('✅ Country detected via OpenCage global search:', firstResult.country);
-          return firstResult.country;
-        }
-        
-        // If we still don't have a country, try reverse geocoding with coordinates
-        if (firstResult.coordinates && firstResult.coordinates.lat && firstResult.coordinates.lon) {
-          // Using coordinates from OpenCage for reverse geocoding
+        if (components.country) {
+          country = components.country;
+          countryCode = components.country_code?.toUpperCase() || 'US';
+          console.log('✅ Country detected via OpenCage:', country, `(${countryCode})`);
           
-          try {
-            // Use OpenCage reverse geocoding with coordinates
-            const reverseResponse = await apiClient.get('https://api.opencagedata.com/geocode/v1/json', {
-              params: {
-                q: `${firstResult.coordinates.lat},${firstResult.coordinates.lon}`,
-                key: '74ecbe1c772e4786b69adbb3fc4f724a',
-                limit: 1,
-                no_annotations: 1
-              }
-            });
-            
-            if (reverseResponse.data && reverseResponse.data.results && reverseResponse.data.results.length > 0) {
-              const result = reverseResponse.data.results[0];
-              const components = result.components;
-              const country = components.country;
-              
-              if (country) {
-                console.log('✅ Country detected via OpenCage coordinates + reverse geocoding:', country);
-                return country;
-              }
-            }
-          } catch (reverseError: unknown) {
-            const errorMessage = reverseError instanceof Error ? reverseError.message : 'Unknown error';
-            console.log('⚠️ Reverse geocoding failed:', errorMessage);
+          // Convert country code to currency code
+          // Most countries use their country code as currency code, but some are different
+          // Get currency code from country code mapping
+          if (COUNTRY_CURRENCY_MAP[countryCode]) {
+            currencyCode = COUNTRY_CURRENCY_MAP[countryCode];
+            console.log(`💱 Currency mapped from country code: ${countryCode} → ${currencyCode}`);
+          } else {
+            // Fallback: try to use country code as currency code
+            currencyCode = countryCode;
+            console.log(`⚠️ No currency mapping for ${countryCode}, using country code as currency: ${currencyCode}`);
           }
+          
+          console.log(`💱 Final currency: ${country} (${countryCode}) → ${currencyCode}`);
+        } else {
+          console.log('⚠️ No country found in OpenCage response, using USD as fallback');
         }
+      } else {
+        console.log('⚠️ No results from OpenCage API, using USD as fallback');
       }
-    } catch (opencageError: unknown) {
-      const errorMessage = opencageError instanceof Error ? opencageError.message : 'Unknown error';
-      console.log('⚠️ OpenCage global search also failed:', errorMessage);
+    } catch (opencageError) {
+      console.log('⚠️ OpenCage API failed, using USD as fallback:', opencageError);
     }
     
-    // Fallback: try to extract country from destination string
-    const parts = destination.split(',').map(part => part.trim());
-    if (parts.length > 1) {
-      const country = parts[parts.length - 1];
-      console.log('✅ Country extracted from destination string:', country);
-      return country;
-    }
-    
-    // Last resort: return destination as country
-    console.log('⚠️ Using destination as country fallback:', destination);
-    return destination;
-    
-  } catch (error) {
-    console.warn('⚠️ Country detection failed, using destination as fallback:', error);
-    return destination;
-  }
-};
-
-// Fetch currency data from ExchangeRate API with dynamic country detection
-export const fetchCurrencyData = async (destination: string): Promise<CurrencyInfo> => {
-  try {
-    console.log('💰 Fetching currency data for destination:', destination);
-    
-    // Step 1: Detect the country
-    const country = await detectCountryFromDestination(destination);
-    // Detected country
-    
-    // Step 2: Get currency for the country
-    const currencyInfo = getCurrencyForCountry(country);
-    console.log('💱 Currency info:', currencyInfo);
-    
-    // Step 3: Try to get real exchange rate from API
-    console.log('💰 Trying ExchangeRate API for real rates...');
+    // Step 2: Get real exchange rate from ExchangeRate API
+    console.log('💰 Getting real exchange rate from ExchangeRate API...');
     
     let rate = 1.0;
     
     try {
-      // Try ExchangeRate API first
       const response = await apiClient.get('https://api.exchangerate-api.com/v4/latest/USD');
       const data = response.data;
       
-      if (data && data.rates && data.rates[currencyInfo.code]) {
-        rate = data.rates[currencyInfo.code];
-        console.log(`✅ Real exchange rate from API: ${currencyInfo.code} = ${rate}`);
+      console.log('📡 ExchangeRate API response received:', {
+        hasData: !!data,
+        hasRates: !!(data && data.rates),
+        currencyCode,
+        rateExists: !!(data && data.rates && data.rates[currencyCode])
+      });
+      
+      if (data && data.rates && data.rates[currencyCode]) {
+        rate = data.rates[currencyCode];
+        console.log(`✅ Real exchange rate from API: ${currencyCode} = ${rate}`);
+        
+        // Set appropriate symbol based on currency code
+        currencySymbol = CURRENCY_SYMBOL_MAP[currencyCode] || '$'; // Default to $ if not found
       } else {
-        throw new Error('Invalid API response structure');
+        console.log(`⚠️ Currency ${currencyCode} not found in API, using USD`);
+        currencyCode = 'USD';
+        currencySymbol = '$';
+        rate = 1.0;
       }
     } catch (apiError) {
-      console.log('⚠️ ExchangeRate API failed, using fallback rates');
-      
-      // Fallback to hardcoded rates
-      const fallbackRates = {
-        'EUR': 0.85, 'JPY': 150.0, 'GBP': 0.75, 'CAD': 1.35,
-        'AUD': 1.50, 'CHF': 0.90, 'CNY': 7.20, 'INR': 83.0,
-        'BRL': 5.20, 'MXN': 18.50, 'ARS': 850.0, 'CLP': 950.0,
-        'COP': 3900.0, 'PEN': 3.80, 'UYU': 38.0, 'PYG': 7200.0,
-        'BOB': 6.90, 'DOP': 58.75, 'HTG': 132.0, 'JMD': 155.0,
-        'TTD': 6.75, 'BBD': 2.0, 'BSD': 1.0, 'CUP': 24.0,
-        'CRC': 520.0, 'NIO': 36.0, 'HNL': 24.5, 'GTQ': 7.80,
-        'BZD': 2.0, 'IDR': 15000.0, 'THB': 35.0, 'VND': 24000.0,
-        'MYR': 4.70, 'SGD': 1.35, 'PHP': 55.0, 'TWD': 31.0,
-        'HKD': 7.80, 'KRW': 1300.0, 'AED': 3.67, 'SAR': 3.75,
-        'QAR': 3.64, 'KWD': 0.31, 'BHD': 0.38, 'OMR': 0.38,
-        'JOD': 0.71, 'LBP': 89000.0, 'ILS': 3.65, 'TRY': 30.0,
-        'ZAR': 18.50, 'EGP': 31.0, 'NGN': 1200.0, 'KES': 160.0,
-        'MAD': 10.0, 'GHS': 12.0, 'ETB': 55.0, 'UGX': 3800.0
-      };
-      
-      rate = fallbackRates[currencyInfo.code as keyof typeof fallbackRates] || 1.0;
-      console.log(`✅ Using fallback rate for ${currencyInfo.code}: ${rate}`);
+      console.log('⚠️ ExchangeRate API failed, using USD as fallback:', apiError);
+      currencyCode = 'USD';
+      currencySymbol = '$';
+      rate = 1.0;
     }
     
     // Generate realistic trend data (in a real app, this would come from historical data)
     const trend = Math.random() > 0.5 ? 'up' : 'down';
     const trendPercentage = Math.random() * 5;
     
-    console.log(`✅ Currency data fetched: ${currencyInfo.code} = ${rate}`);
+    console.log(`✅ Currency data fetched: ${currencyCode} = ${rate} (${country} - ${countryCode})`);
     
     return {
-      code: currencyInfo.code,
-      symbol: currencyInfo.symbol,
+      code: currencyCode,
+      symbol: currencySymbol,
       rate,
       trend,
       trendPercentage: parseFloat(trendPercentage.toFixed(2))
     };
     
   } catch (error) {
-    console.warn('⚠️ ExchangeRate API failed, using fallback data:', error);
+    console.warn('⚠️ Currency fetching failed, using USD as fallback:', error);
     
-    // Enhanced fallback: detect country and use appropriate currency
-    try {
-      const country = await detectCountryFromDestination(destination);
-      const currencyInfo = getCurrencyForCountry(country);
-      
-      console.log('✅ Using fallback currency for country:', country, currencyInfo);
-      
-      return {
-        code: currencyInfo.code,
-        symbol: currencyInfo.symbol,
-        rate: 1.0, // Default rate for fallback
-        trend: 'stable',
-        trendPercentage: 0
-      };
-    } catch (fallbackError) {
-      console.warn('⚠️ Fallback currency detection failed, using USD:', fallbackError);
-      
-      return {
-        code: 'USD',
-        symbol: '$',
-        rate: 1.0,
-        trend: 'stable',
-        trendPercentage: 0
-      };
-    }
+    return {
+      code: 'USD',
+      symbol: '$',
+      rate: 1.0,
+      trend: 'stable',
+      trendPercentage: 0
+    };
   }
 };
 
