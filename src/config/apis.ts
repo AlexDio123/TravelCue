@@ -26,14 +26,13 @@ export const API_CONFIG = {
     }
   },
   
-  // OpenTripMap API for global search and attractions
-  OPENTRIPMAP: {
-    BASE_URL: 'https://api.opentripmap.com/0.1/en/places',
-    API_KEY: process.env.NEXT_PUBLIC_OPENTRIPMAP_API_KEY || '5ae2e3f221c38a28845f05b6aef41c645af941de9643f5df60be1916',
+  // OpenCage Geocoding API for global search and country detection
+  OPENCAGE: {
+    BASE_URL: 'https://api.opencagedata.com/geocode/v1',
+    API_KEY: process.env.NEXT_PUBLIC_OPENCAGE_API_KEY || '74ecbe1c772e4786b69adbb3fc4f724a',
     ENDPOINTS: {
-      AUTOSUGGEST: '/autosuggest',
-      SEARCH: '/autosuggest', // Using autosuggest for search as well
-      PLACE_DETAILS: '/xid'
+      FORWARD: '/json', // Forward geocoding (place name → coordinates + metadata)
+      REVERSE: '/json'  // Reverse geocoding (coordinates → place metadata)
     }
   },
   
@@ -67,9 +66,9 @@ export const RATE_LIMITS = {
     REQUESTS_PER_MINUTE: 10,
     REQUESTS_PER_DAY: 1000
   },
-  OPENTRIPMAP: {
-    REQUESTS_PER_MINUTE: 5,
-    REQUESTS_PER_DAY: 5000
+  OPENCAGE: {
+    REQUESTS_PER_MINUTE: 10,
+    REQUESTS_PER_DAY: 2500
   }
 };
 

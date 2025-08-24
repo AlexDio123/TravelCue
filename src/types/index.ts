@@ -17,6 +17,9 @@ export interface TimezoneInfo {
   currentTime: string;
   timeDifference: string;
   isDaylight: boolean;
+  userTimezone: string;
+  userCurrentTime: string;
+  isSameTimezone: boolean;
 }
 
 export interface CurrencyInfo {
