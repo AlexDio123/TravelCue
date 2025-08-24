@@ -93,8 +93,23 @@ export const searchGlobalDestination = async (query: string): Promise<Array<{nam
           // OpenCage Response received
     
     if (response.data && response.data.results && Array.isArray(response.data.results)) {
-      const destinations = response.data.results.map((result: { components: { city?: string; town?: string; village?: string; county?: string; country?: string }; geometry?: { lat: number; lng: number } }) => {
+      const destinations = response.data.results.map((result: { components: { city?: string; town?: string; village?: string; county?: string; country?: string; state?: string; province?: string; region?: string; district?: string }; geometry?: { lat: number; lng: number } }) => {
         const components = result.components;
+        
+        // Debug: Log what components we're getting
+        console.log('🔍 OpenCage components for destination:', {
+          query: query,
+          components: components,
+          hasCity: !!components.city,
+          hasTown: !!components.town,
+          hasVillage: !!components.village,
+          hasCounty: !!components.county,
+          hasState: !!components.state,
+          hasProvince: !!components.province,
+          hasRegion: !!components.region,
+          hasDistrict: !!components.district
+        });
+        
         const coordinates = {
           lat: result.geometry?.lat || 0,
           lon: result.geometry?.lng || 0
@@ -102,7 +117,7 @@ export const searchGlobalDestination = async (query: string): Promise<Array<{nam
         
         // Extract rich data from OpenCage response
         const destination = {
-          name: components.city || components.town || components.village || components.county || 'Unknown Destination',
+          name: components.city || components.town || components.village || components.county || components.state || components.province || components.region || components.district || 'Unknown Destination',
           country: components.country || 'Unknown Country',
           coordinates
         };
