@@ -157,67 +157,243 @@ export const searchGlobalDestination = async (query: string): Promise<Array<{nam
 // Fetch attractions using OpenCage reverse geocoding + mock data (OpenCage doesn't provide attractions)
 export const fetchAttractionsData = async (destination: string, coordinates?: {lat: number, lon: number}): Promise<AttractionInfo[]> => {
   try {
-    console.log('🏛️ Fetching attractions using OpenCage + mock data...');
-    
-    // OpenCage doesn't provide attractions, so we'll use the coordinates to get location context
-    // and then provide relevant mock attractions based on the destination
-    let locationContext = '';
-    
-    if (coordinates) {
-      // Use reverse geocoding to get location context
+    // Step 1: Get coordinates from OpenCage if not provided
+    if (!coordinates) {
       try {
-        const reverseResponse = await apiClient.get('https://api.opencagedata.com/geocode/v1/json', {
-          params: {
-            q: `${coordinates.lat},${coordinates.lon}`,
-            key: '74ecbe1c772e4786b69adbb3fc4f724a',
-            limit: 1,
-            no_annotations: 1
-          }
-        });
-        
-        if (reverseResponse.data && reverseResponse.data.results && reverseResponse.data.results.length > 0) {
-          const result = reverseResponse.data.results[0];
-          locationContext = result.formatted || destination;
-          console.log('🏛️ Location context from OpenCage:', locationContext);
+        const searchResults = await searchGlobalDestination(destination);
+        if (searchResults.length > 0) {
+          coordinates = searchResults[0].coordinates;
+          console.log('🏛️ Got coordinates from OpenCage for attractions:', coordinates);
         }
-      } catch (reverseError: unknown) {
-        const errorMessage = reverseError instanceof Error ? reverseError.message : 'Unknown error';
-        // Reverse geocoding for attractions failed
-        locationContext = destination;
+      } catch (error) {
+        console.log('⚠️ Could not get coordinates for attractions search');
+        return generateFallbackAttractions(destination);
       }
-    } else {
-      locationContext = destination;
     }
     
-    // Generate relevant mock attractions based on the destination
-    const mockAttractions: AttractionInfo[] = [
-      { name: 'Historic City Center', type: 'Cultural', rating: 4.5, distance: '0.2km', emoji: '🏛️' },
-      { name: 'Local Museum', type: 'Cultural', rating: 4.2, distance: '0.8km', emoji: '🏛️' },
-      { name: 'Ancient Cathedral', type: 'Religious', rating: 4.7, distance: '1.2km', emoji: '⛪' },
-      { name: 'Art Gallery', type: 'Cultural', rating: 4.0, distance: '1.5km', emoji: '🎨' },
-      { name: 'Historic Fortress', type: 'Historic', rating: 4.3, distance: '2.0km', emoji: '🏰' }
-    ];
+    if (!coordinates || !coordinates.lat || !coordinates.lon) {
+      console.log('⚠️ No valid coordinates for attractions search');
+      return generateFallbackAttractions(destination);
+    }
     
-          // Generated mock attractions
-    return mockAttractions;
+    // Step 2: Use OpenStreetMap Overpass API for reliable attractions data
+    console.log('🗺️ Fetching attractions from OpenStreetMap Overpass API...');
+    
+    try {
+      // Build Overpass query to find attractions within 30km radius (excluding hotels/residential)
+      const overpassQuery = `
+        [out:json][timeout:25];
+        (
+          // Museums and cultural venues
+          node["amenity"="museum"](around:30000,${coordinates.lat},${coordinates.lon});
+          node["amenity"="theatre"](around:30000,${coordinates.lat},${coordinates.lon});
+          node["amenity"="cinema"](around:30000,${coordinates.lat},${coordinates.lon});
+          
+          // Historic sites (excluding simple memorials)
+          node["historic"="archaeological_site"](around:30000,${coordinates.lat},${coordinates.lon});
+          node["historic"="castle"](around:30000,${coordinates.lat},${coordinates.lon});
+          node["historic"="fort"](around:30000,${coordinates.lat},${coordinates.lon});
+          node["historic"="ruins"](around:30000,${coordinates.lat},${coordinates.lon});
+          
+          // Parks and natural attractions
+          node["leisure"="park"](around:30000,${coordinates.lat},${coordinates.lon});
+          node["natural"="cave_entrance"](around:30000,${coordinates.lat},${coordinates.lon});
+          node["natural"="beach"](around:30000,${coordinates.lat},${coordinates.lon});
+          
+          // Tourist attractions (excluding hotels)
+          node["tourism"="attraction"](around:30000,${coordinates.lat},${coordinates.lon});
+          node["tourism"="museum"](around:30000,${coordinates.lat},${coordinates.lon});
+          node["tourism"="artwork"](around:30000,${coordinates.lat},${coordinates.lon});
+          node["tourism"="viewpoint"](around:30000,${coordinates.lat},${coordinates.lon});
+          
+          // Landmarks and monuments
+          node["landmark"](around:30000,${coordinates.lat},${coordinates.lon});
+          node["man_made"="tower"](around:30000,${coordinates.lat},${coordinates.lon});
+          node["man_made"="bridge"](around:30000,${coordinates.lat},${coordinates.lon});
+          
+          // Ways (areas) for larger attractions
+          way["leisure"="park"](around:30000,${coordinates.lat},${coordinates.lon});
+          way["historic"](around:30000,${coordinates.lat},${coordinates.lon});
+          way["tourism"="attraction"](around:30000,${coordinates.lat},${coordinates.lon});
+        );
+        out body;
+        >;
+        out skel qt;
+      `;
+      
+      const response = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `data=${encodeURIComponent(overpassQuery)}`
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Overpass API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.elements && Array.isArray(data.elements)) {
+        const attractions: AttractionInfo[] = data.elements
+          .filter((element: { tags?: { name?: string; tourism?: string; amenity?: string; historic?: string; leisure?: string; natural?: string; landmark?: string; man_made?: string } }) => {
+            // Filter for elements with names and relevant tags
+            if (!element.tags || !element.tags.name) return false;
+            
+            const tags = element.tags;
+            
+            // Only include tourist-relevant attractions, exclude hotels, residential, etc.
+            if (tags.tourism === 'hotel' || tags.tourism === 'guest_house' || tags.tourism === 'motel') return false;
+            if (tags.amenity === 'place_of_worship' && !tags.historic) return false; // Only historic churches
+            if (tags.historic === 'memorial' && !tags.tourism) return false; // Only tourist memorials
+            
+            // Include only these specific attraction types
+            return (
+              // Museums and cultural venues
+              tags.amenity === 'museum' ||
+              tags.amenity === 'theatre' ||
+              tags.amenity === 'cinema' ||
+              
+              // Historic sites
+              (tags.historic && tags.historic !== 'memorial') ||
+              tags.historic === 'archaeological_site' ||
+              
+              // Parks and natural attractions
+              tags.leisure === 'park' ||
+              tags.natural === 'cave_entrance' ||
+              
+              // Tourist attractions
+              tags.tourism === 'attraction' ||
+              tags.tourism === 'museum' ||
+              tags.tourism === 'artwork' ||
+              
+              // Landmarks and monuments
+              tags.landmark ||
+              (tags.man_made === 'tower' && tags.tourism) ||
+              (tags.man_made === 'bridge' && tags.tourism)
+            );
+          })
+          .slice(0, 10) // Get more to filter from
+          .map((element: { tags: { name: string; tourism?: string; amenity?: string; historic?: string; leisure?: string; natural?: string; landmark?: string; man_made?: string } }) => {
+            // Determine attraction type and emoji based on OpenStreetMap tags
+            let type: string = 'Attraction';
+            let emoji = '🏛️';
+            
+            if (element.tags.amenity === 'museum' || element.tags.tourism === 'museum') {
+              type = 'Museum';
+              emoji = '🏛️';
+            } else if (element.tags.amenity === 'theatre') {
+              type = 'Theater';
+              emoji = '🎭';
+            } else if (element.tags.amenity === 'cinema') {
+              type = 'Cinema';
+              emoji = '🎬';
+            } else if (element.tags.historic === 'archaeological_site') {
+              type = 'Archaeological';
+              emoji = '🏺';
+            } else if (element.tags.historic === 'castle' || element.tags.historic === 'fort') {
+              type = 'Historic';
+              emoji = '🏰';
+            } else if (element.tags.leisure === 'park') {
+              type = 'Park';
+              emoji = '🌳';
+            } else if (element.tags.natural === 'cave_entrance') {
+              type = 'Natural';
+              emoji = '🕳️';
+            } else if (element.tags.natural === 'beach') {
+              type = 'Beach';
+              emoji = '🏖️';
+            } else if (element.tags.tourism === 'attraction') {
+              type = 'Tourist';
+              emoji = '🎯';
+            } else if (element.tags.tourism === 'artwork') {
+              type = 'Artwork';
+              emoji = '🎨';
+            } else if (element.tags.tourism === 'viewpoint') {
+              type = 'Viewpoint';
+              emoji = '👁️';
+            } else if (element.tags.landmark) {
+              type = 'Landmark';
+              emoji = '🗼';
+            } else if (element.tags.man_made === 'tower') {
+              type = 'Tower';
+              emoji = '🗼';
+            } else if (element.tags.man_made === 'bridge') {
+              type = 'Bridge';
+              emoji = '🌉';
+            }
+            
+            return {
+              name: element.tags.name,
+              type,
+              rating: 4.0 + (Math.random() * 0.5), // Random rating between 4.0-4.5
+              distance: 'Nearby', // Simple indication that attractions are in the destination
+              emoji
+            };
+          })
+          .slice(0, 5); // Return top 5 attractions
+        
+        if (attractions.length > 0) {
+          console.log(`✅ Found ${attractions.length} real attractions from OpenStreetMap`);
+          return attractions;
+        }
+      }
+    } catch (overpassError) {
+      console.log('⚠️ OpenStreetMap Overpass API failed:', overpassError);
+    }
+    
+    // Step 3: Fallback to intelligent mock attractions based on location
+    return generateFallbackAttractions(destination);
     
   } catch (error: unknown) {
     console.warn('⚠️ Attractions generation failed, using basic fallback:', error);
-    
-    // Basic fallback attractions
-    const fallbackAttractions: AttractionInfo[] = [
-      { name: 'Historic City Center', type: 'Cultural', rating: 4.5, distance: '0.2km', emoji: '🏛️' },
-      { name: 'Local Museum', type: 'Cultural', rating: 4.2, distance: '0.8km', emoji: '🏛️' },
-      { name: 'Ancient Cathedral', type: 'Religious', rating: 4.7, distance: '1.2km', emoji: '⛪' },
-      { name: 'Art Gallery', type: 'Cultural', rating: 4.0, distance: '1.5km', emoji: '🎨' },
-      { name: 'Historic Fortress', type: 'Historic', rating: 4.3, distance: '2.0km', emoji: '🏰' }
-    ];
-    
-    return fallbackAttractions;
+    return generateFallbackAttractions(destination);
   }
 };
 
 
+
+// Generate intelligent fallback attractions based on destination
+const generateFallbackAttractions = (destination: string): AttractionInfo[] => {
+  const destinationLower = destination.toLowerCase();
+  
+  // Generate contextually relevant attractions based on destination
+  if (destinationLower.includes('paris') || destinationLower.includes('france')) {
+    return [
+      { name: 'Eiffel Tower', type: 'Landmark', rating: 4.7, distance: 'Nearby', emoji: '🗼' },
+      { name: 'Louvre Museum', type: 'Cultural', rating: 4.6, distance: 'Nearby', emoji: '🏛️' },
+      { name: 'Notre-Dame Cathedral', type: 'Religious', rating: 4.5, distance: 'Nearby', emoji: '⛪' },
+      { name: 'Arc de Triomphe', type: 'Historic', rating: 4.4, distance: 'Nearby', emoji: '🏛️' },
+      { name: 'Champs-Élysées', type: 'Shopping', rating: 4.3, distance: 'Nearby', emoji: '🛍️' }
+    ];
+  } else if (destinationLower.includes('barcelona') || destinationLower.includes('spain')) {
+    return [
+      { name: 'Sagrada Familia', type: 'Religious', rating: 4.8, distance: 'Nearby', emoji: '⛪' },
+      { name: 'Park Güell', type: 'Natural', rating: 4.6, distance: 'Nearby', emoji: '🌳' },
+      { name: 'Casa Batlló', type: 'Architecture', rating: 4.5, distance: 'Nearby', emoji: '🏛️' },
+      { name: 'La Rambla', type: 'Shopping', rating: 4.3, distance: 'Nearby', emoji: '🛍️' },
+      { name: 'Gothic Quarter', type: 'Historic', rating: 4.4, distance: 'Nearby', emoji: '🏰' }
+    ];
+  } else if (destinationLower.includes('tokyo') || destinationLower.includes('japan')) {
+    return [
+      { name: 'Senso-ji Temple', type: 'Religious', rating: 4.6, distance: 'Nearby', emoji: '⛩️' },
+      { name: 'Tokyo Skytree', type: 'Landmark', rating: 4.5, distance: 'Nearby', emoji: '🗼' },
+      { name: 'Shibuya Crossing', type: 'Urban', rating: 4.4, distance: 'Nearby', emoji: '🚶' },
+      { name: 'Meiji Shrine', type: 'Religious', rating: 4.7, distance: 'Nearby', emoji: '⛩️' },
+      { name: 'Tsukiji Market', type: 'Cultural', rating: 4.3, distance: 'Nearby', emoji: '🐟' }
+    ];
+  } else {
+    // Generic attractions for other destinations
+    return [
+      { name: 'Historic Cathedral', type: 'Religious', rating: 4.5, distance: 'Nearby', emoji: '⛪' },
+      { name: 'Central Plaza', type: 'Public Space', rating: 4.2, distance: 'Nearby', emoji: '🏛️' },
+      { name: 'Local Museum', type: 'Cultural', rating: 4.0, distance: 'Nearby', emoji: '🏛️' },
+      { name: 'Historic Fortress', type: 'Historic', rating: 4.3, distance: 'Nearby', emoji: '🏰' },
+      { name: 'City Park', type: 'Natural', rating: 4.1, distance: 'Nearby', emoji: '🌳' }
+    ];
+  }
+};
 
 // Fetch real events from PredictHQ API
 export const fetchEventsData = async (destination: string): Promise<EventInfo[]> => {
@@ -670,199 +846,26 @@ export const fetchTimezoneData = async (destination: string): Promise<TimezoneIn
   }
 };
 
-// Enhanced currency mapping for global destinations
+// Simple currency detection - removed massive hardcoded mapping
 const getCurrencyForCountry = (countryName: string): { code: string; symbol: string } => {
-  const currencyMap: { [key: string]: { code: string; symbol: string } } = {
-    // Europe
-    'Spain': { code: 'EUR', symbol: '€' },
-    'France': { code: 'EUR', symbol: '€' },
-    'Germany': { code: 'EUR', symbol: '€' },
-    'Italy': { code: 'EUR', symbol: '€' },
-    'Netherlands': { code: 'EUR', symbol: '€' },
-    'Belgium': { code: 'EUR', symbol: '€' },
-    'Austria': { code: 'EUR', symbol: '€' },
-    'Portugal': { code: 'EUR', symbol: '€' },
-    'Greece': { code: 'EUR', symbol: '€' },
-    'Ireland': { code: 'EUR', symbol: '€' },
-    'Finland': { code: 'EUR', symbol: '€' },
-    'Sweden': { code: 'SEK', symbol: 'kr' },
-    'Denmark': { code: 'DKK', symbol: 'kr' },
-    'Norway': { code: 'NOK', symbol: 'kr' },
-    'Switzerland': { code: 'CHF', symbol: 'CHF' },
-    'United Kingdom': { code: 'GBP', symbol: '£' },
-    'Poland': { code: 'PLN', symbol: 'zł' },
-    'Czech Republic': { code: 'CZK', symbol: 'Kč' },
-    'Hungary': { code: 'HUF', symbol: 'Ft' },
-    'Romania': { code: 'RON', symbol: 'lei' },
-    'Bulgaria': { code: 'BGN', symbol: 'лв' },
-    'Croatia': { code: 'EUR', symbol: '€' },
-    'Slovenia': { code: 'EUR', symbol: '€' },
-    'Slovakia': { code: 'EUR', symbol: '€' },
-    'Estonia': { code: 'EUR', symbol: '€' },
-    'Latvia': { code: 'EUR', symbol: '€' },
-    'Lithuania': { code: 'EUR', symbol: '€' },
-    'Malta': { code: 'EUR', symbol: '€' },
-    'Cyprus': { code: 'EUR', symbol: '€' },
-    
-    // Americas
+  // Simple mapping for major currencies only
+  const majorCurrencies: { [key: string]: { code: string; symbol: string } } = {
     'United States': { code: 'USD', symbol: '$' },
     'Canada': { code: 'CAD', symbol: 'C$' },
     'Mexico': { code: 'MXN', symbol: '$' },
     'Brazil': { code: 'BRL', symbol: 'R$' },
-    'Argentina': { code: 'ARS', symbol: '$' },
-    'Chile': { code: 'CLP', symbol: '$' },
-    'Colombia': { code: 'COP', symbol: '$' },
-    'Peru': { code: 'PEN', symbol: 'S/' },
-    'Venezuela': { code: 'VES', symbol: 'Bs' },
-    'Ecuador': { code: 'USD', symbol: '$' },
-    'Uruguay': { code: 'UYU', symbol: '$' },
-    'Paraguay': { code: 'PYG', symbol: '₲' },
-    'Bolivia': { code: 'BOB', symbol: 'Bs' },
-    'Guyana': { code: 'GYD', symbol: '$' },
-    'Suriname': { code: 'SRD', symbol: '$' },
-    'Dominican Republic': { code: 'DOP', symbol: 'RD$' },
-    'Haiti': { code: 'HTG', symbol: 'G' },
-    'Jamaica': { code: 'JMD', symbol: 'J$' },
-    'Trinidad and Tobago': { code: 'TTD', symbol: 'TT$' },
-    'Barbados': { code: 'BBD', symbol: 'Bds$' },
-    'Bahamas': { code: 'BSD', symbol: '$' },
-    'Cuba': { code: 'CUP', symbol: '$' },
-    'Puerto Rico': { code: 'USD', symbol: '$' },
-    'Costa Rica': { code: 'CRC', symbol: '₡' },
-    'Panama': { code: 'USD', symbol: '$' },
-    'Nicaragua': { code: 'NIO', symbol: 'C$' },
-    'Honduras': { code: 'HNL', symbol: 'L' },
-    'El Salvador': { code: 'USD', symbol: '$' },
-    'Guatemala': { code: 'GTQ', symbol: 'Q' },
-    'Belize': { code: 'BZD', symbol: 'BZ$' },
-    
-    // Asia
+    'United Kingdom': { code: 'GBP', symbol: '£' },
+    'Germany': { code: 'EUR', symbol: '€' },
+    'France': { code: 'EUR', symbol: '€' },
+    'Spain': { code: 'EUR', symbol: '€' },
+    'Italy': { code: 'EUR', symbol: '€' },
     'Japan': { code: 'JPY', symbol: '¥' },
     'China': { code: 'CNY', symbol: '¥' },
-    'South Korea': { code: 'KRW', symbol: '₩' },
-    'India': { code: 'INR', symbol: '₹' },
-    'Thailand': { code: 'THB', symbol: '฿' },
-    'Vietnam': { code: 'VND', symbol: '₫' },
-    'Malaysia': { code: 'MYR', symbol: 'RM' },
-    'Singapore': { code: 'SGD', symbol: 'S$' },
-    'Indonesia': { code: 'IDR', symbol: 'Rp' },
-    'Philippines': { code: 'PHP', symbol: '₱' },
-    'Taiwan': { code: 'TWD', symbol: 'NT$' },
-    'Hong Kong': { code: 'HKD', symbol: 'HK$' },
-    'Cambodia': { code: 'KHR', symbol: '៛' },
-    'Laos': { code: 'LAK', symbol: '₭' },
-    'Myanmar': { code: 'MMK', symbol: 'K' },
-    'Bangladesh': { code: 'BDT', symbol: '৳' },
-    'Sri Lanka': { code: 'LKR', symbol: 'Rs' },
-    'Nepal': { code: 'NPR', symbol: 'रू' },
-    'Pakistan': { code: 'PKR', symbol: '₨' },
-    'Afghanistan': { code: 'AFN', symbol: '؋' },
-    'Iran': { code: 'IRR', symbol: '﷼' },
-    'Iraq': { code: 'IQD', symbol: 'ع.د' },
-    'Saudi Arabia': { code: 'SAR', symbol: 'ر.س' },
-    'United Arab Emirates': { code: 'AED', symbol: 'د.إ' },
-    'Qatar': { code: 'QAR', symbol: 'ر.ق' },
-    'Kuwait': { code: 'KWD', symbol: 'د.ك' },
-    'Bahrain': { code: 'BHD', symbol: '.د.ب' },
-    'Oman': { code: 'OMR', symbol: 'ر.ع.' },
-    'Yemen': { code: 'YER', symbol: '﷼' },
-    'Jordan': { code: 'JOD', symbol: 'د.ا' },
-    'Lebanon': { code: 'LBP', symbol: 'ل.ل' },
-    'Syria': { code: 'SYP', symbol: 'ل.س' },
-    'Israel': { code: 'ILS', symbol: '₪' },
-    'Turkey': { code: 'TRY', symbol: '₺' },
-    'Georgia': { code: 'GEL', symbol: '₾' },
-    'Armenia': { code: 'AMD', symbol: '֏' },
-    'Azerbaijan': { code: 'AZN', symbol: '₼' },
-    'Kazakhstan': { code: 'KZT', symbol: '₸' },
-    'Uzbekistan': { code: 'UZS', symbol: 'so\'m' },
-    'Kyrgyzstan': { code: 'KGS', symbol: 'с' },
-    'Tajikistan': { code: 'TJS', symbol: 'ЅМ' },
-    'Turkmenistan': { code: 'TMT', symbol: 'T' },
-    'Mongolia': { code: 'MNT', symbol: '₮' },
-    
-    // Africa
-    'South Africa': { code: 'ZAR', symbol: 'R' },
-    'Egypt': { code: 'EGP', symbol: 'E£' },
-    'Nigeria': { code: 'NGN', symbol: '₦' },
-    'Kenya': { code: 'KES', symbol: 'KSh' },
-    'Morocco': { code: 'MAD', symbol: 'د.م.' },
-    'Algeria': { code: 'DZD', symbol: 'د.ج' },
-    'Tunisia': { code: 'TND', symbol: 'د.ت' },
-    'Ghana': { code: 'GHS', symbol: 'GH₵' },
-    'Ethiopia': { code: 'ETB', symbol: 'Br' },
-    'Uganda': { code: 'UGX', symbol: 'USh' },
-    'Tanzania': { code: 'TZS', symbol: 'TSh' },
-    'Sudan': { code: 'SDG', symbol: 'ج.س.' },
-    'Libya': { code: 'LYD', symbol: 'ل.د' },
-    'Cameroon': { code: 'XAF', symbol: 'FCFA' },
-    'Côte d\'Ivoire': { code: 'XOF', symbol: 'CFA' },
-    'Senegal': { code: 'XOF', symbol: 'CFA' },
-    'Mali': { code: 'XOF', symbol: 'CFA' },
-    'Burkina Faso': { code: 'XOF', symbol: 'CFA' },
-    'Niger': { code: 'XOF', symbol: 'CFA' },
-    'Chad': { code: 'XAF', symbol: 'FCFA' },
-    'Central African Republic': { code: 'XAF', symbol: 'FCFA' },
-    'Gabon': { code: 'XAF', symbol: 'FCFA' },
-    'Republic of the Congo': { code: 'XAF', symbol: 'FCFA' },
-    'Democratic Republic of the Congo': { code: 'CDF', symbol: 'FC' },
-    'Angola': { code: 'AOA', symbol: 'Kz' },
-    'Zambia': { code: 'ZMW', symbol: 'K' },
-    'Zimbabwe': { code: 'ZWL', symbol: '$' },
-    'Botswana': { code: 'BWP', symbol: 'P' },
-    'Namibia': { code: 'NAD', symbol: 'N$' },
-    'Lesotho': { code: 'LSL', symbol: 'L' },
-    'Eswatini': { code: 'SZL', symbol: 'E' },
-    'Madagascar': { code: 'MGA', symbol: 'Ar' },
-    'Mauritius': { code: 'MUR', symbol: '₨' },
-    'Seychelles': { code: 'SCR', symbol: '₨' },
-    'Comoros': { code: 'KMF', symbol: 'CF' },
-    'Djibouti': { code: 'DJF', symbol: 'Fdj' },
-    'Eritrea': { code: 'ERN', symbol: 'Nfk' },
-    'Somalia': { code: 'SOS', symbol: 'Sh' },
-    'Burundi': { code: 'BIF', symbol: 'FBu' },
-    'Rwanda': { code: 'RWF', symbol: 'FRw' },
-    'Malawi': { code: 'MWK', symbol: 'MK' },
-    'Mozambique': { code: 'MZN', symbol: 'MT' },
-    
-    // Oceania
     'Australia': { code: 'AUD', symbol: 'A$' },
-    'New Zealand': { code: 'NZD', symbol: 'NZ$' },
-    'Fiji': { code: 'FJD', symbol: 'FJ$' },
-    'Papua New Guinea': { code: 'PGK', symbol: 'K' },
-    'Solomon Islands': { code: 'SBD', symbol: 'SI$' },
-    'Vanuatu': { code: 'VUV', symbol: 'VT' },
-    'New Caledonia': { code: 'XPF', symbol: 'CFP' },
-    'French Polynesia': { code: 'XPF', symbol: 'CFP' },
-    'Samoa': { code: 'WST', symbol: 'T' },
-    'Tonga': { code: 'TOP', symbol: 'T$' },
-    'Kiribati': { code: 'AUD', symbol: 'A$' },
-    'Tuvalu': { code: 'AUD', symbol: 'A$' },
-    'Nauru': { code: 'AUD', symbol: 'A$' },
-    'Palau': { code: 'USD', symbol: '$' },
-    'Marshall Islands': { code: 'USD', symbol: '$' },
-    'Micronesia': { code: 'USD', symbol: '$' },
-    
-    // Default fallback
-    'Unknown': { code: 'USD', symbol: '$' }
+    'India': { code: 'INR', symbol: '₹' }
   };
   
-  // Try exact match first
-  if (currencyMap[countryName]) {
-    return currencyMap[countryName];
-  }
-  
-  // Try partial matches for common variations
-  const normalizedCountry = countryName.toLowerCase();
-  for (const [country, currency] of Object.entries(currencyMap)) {
-    if (country.toLowerCase().includes(normalizedCountry) || 
-        normalizedCountry.includes(country.toLowerCase())) {
-      return currency;
-    }
-  }
-  
-  // Return default for unknown countries
-  return currencyMap['Unknown'];
+  return majorCurrencies[countryName] || { code: 'USD', symbol: '$' };
 };
 
     // Enhanced currency detection using OpenCage geocoding
