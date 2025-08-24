@@ -2,7 +2,6 @@ export interface LocationSnapshot {
   destination: string;
   timezone: TimezoneInfo;
   currency: CurrencyInfo;
-  travelTrend: TravelTrend;
   weather: WeatherInfo;
   events: EventInfo[];
   attractions: AttractionInfo[];
@@ -28,13 +27,6 @@ export interface CurrencyInfo {
   rate: number;
   trend: 'up' | 'down' | 'stable';
   trendPercentage: number;
-}
-
-export interface TravelTrend {
-  season: 'high' | 'low' | 'moderate';
-  emoji: string;
-  description: string;
-  recommendation: string;
 }
 
 export interface WeatherInfo {

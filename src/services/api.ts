@@ -5,13 +5,6 @@ import { COUNTRY_CURRENCY_MAP, CURRENCY_SYMBOL_MAP } from '@/config/constants';
 
 // Mock data for components that don't have free APIs
 const mockData = {
-  travelTrend: {
-    'Barcelona, Spain': { season: 'high' as const, emoji: '🔥', description: 'Peak Season', recommendation: 'Book early, expect crowds' },
-    'Tokyo, Japan': { season: 'moderate' as const, emoji: '🌸', description: 'Cherry Blossom Season', recommendation: 'Great time to visit' },
-    'New York, USA': { season: 'high' as const, emoji: '🍂', description: 'Fall Season', recommendation: 'Beautiful weather, busy city' },
-    'Bali, Indonesia': { season: 'low' as const, emoji: '🌧️', description: 'Rainy Season', recommendation: 'Fewer tourists, lower prices' },
-    'Paris, France': { season: 'moderate' as const, emoji: '🌷', description: 'Spring Season', recommendation: 'Good weather, moderate crowds' }
-  },
   events: {
     'Barcelona, Spain': [
       { name: 'Sónar Festival', type: 'music' as const, date: 'June 2024', emoji: '🎸', venue: 'Various venues' },
@@ -592,8 +585,6 @@ const getDefaultData = (destination: string) => {
   // const country = destination.split(',')[1]?.trim() || '';
   
   return {
-    travelTrend: mockData.travelTrend[destination as keyof typeof mockData.travelTrend] || 
-                 { season: 'moderate' as const, emoji: '🌤️', description: 'Moderate Season', recommendation: 'Good time to visit' },
     events: mockData.events[destination as keyof typeof mockData.events] || 
             [{ name: 'Local Events', type: 'cultural' as const, date: 'Check local calendar', emoji: '📅' }],
     attractions: mockData.attractions[destination as keyof typeof mockData.attractions] || 

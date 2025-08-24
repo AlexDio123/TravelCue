@@ -63,7 +63,7 @@ src/
 │   ├── LocationSnapshotCard.tsx # Main snapshot display
 │   ├── TimezoneCard.tsx         # Timezone information
 │   ├── CurrencyCard.tsx         # Currency and rates
-│   ├── TravelTrendCard.tsx      # Travel season info
+│   ├── SeasonCard.tsx           # Season-based travel insights
 │   ├── WeatherCard.tsx          # Weather data
 │   ├── EventsCard.tsx           # Events listing
 │   ├── AttractionsCard.tsx      # Attractions info

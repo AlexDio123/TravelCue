@@ -1,7 +1,7 @@
 import { LocationSnapshot } from '@/types';
 import TimezoneCard from './TimezoneCard';
 import CurrencyCard from './CurrencyCard';
-import TravelTrendCard from './TravelTrendCard';
+import SeasonCard from './SeasonCard';
 import WeatherCard from './WeatherCard';
 import EventsCard from './EventsCard';
 import AttractionsCard from './AttractionsCard';
@@ -34,10 +34,10 @@ export default function LocationSnapshotCard({ snapshot }: LocationSnapshotCardP
       {/* Main Content Grid */}
       <div className="bg-gray-50 rounded-b-xl p-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {/* Row 1: Timezone, Currency, Travel Trend */}
+          {/* Row 1: Timezone, Currency, Season */}
           <TimezoneCard timezone={snapshot.timezone} />
           <CurrencyCard currency={snapshot.currency} />
-          <TravelTrendCard travelTrend={snapshot.travelTrend} />
+          <SeasonCard weather={snapshot.weather} />
           
           {/* Row 2: Weather, Events, Attractions */}
           <WeatherCard weather={snapshot.weather} />
