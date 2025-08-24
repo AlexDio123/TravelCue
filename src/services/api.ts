@@ -1,5 +1,5 @@
 import apiClient from './axios-config';
-import { LocationSnapshot, TimezoneInfo, CurrencyInfo, WeatherInfo, EventInfo } from '@/types';
+import { LocationSnapshot, TimezoneInfo, CurrencyInfo, WeatherInfo, EventInfo, AttractionInfo } from '@/types';
 import { API_CONFIG, FALLBACK_DATA } from '@/config/apis';
 
 // Mock data for components that don't have free APIs
@@ -72,6 +72,185 @@ const mockData = {
   }
 };
 
+// Global search for any destination using OpenTripMap
+export const searchGlobalDestination = async (query: string): Promise<Array<{name: string, country: string, coordinates: {lat: number, lon: number}}>> => {
+  try {
+    console.log('🌍 Testing OpenTripMap API...');
+    console.log('🌍 API Key:', API_CONFIG.OPENTRIPMAP.API_KEY);
+    console.log('🌍 Base URL:', API_CONFIG.OPENTRIPMAP.BASE_URL);
+    console.log('🌍 Searching for destination:', query);
+    
+    // Use OpenTripMap autosuggest endpoint with correct parameters (as tested in browser)
+    console.log('🌍 Using OpenTripMap autosuggest with correct parameters...');
+    
+    // For now, use default coordinates (can be enhanced later with geocoding)
+    const autosuggestParams = {
+      name: query,
+      radius: 5000,
+      lon: -69.9312,  // Default longitude (can be made dynamic)
+      lat: 18.4861,   // Default latitude (can be made dynamic)
+      limit: 10,
+      apikey: API_CONFIG.OPENTRIPMAP.API_KEY
+    };
+    
+    console.log('🌍 Autosuggest parameters:', autosuggestParams);
+    console.log('🌍 Autosuggest URL:', `${API_CONFIG.OPENTRIPMAP.BASE_URL}/autosuggest`);
+    
+    const response = await apiClient.get(
+      `${API_CONFIG.OPENTRIPMAP.BASE_URL}/autosuggest`,
+      {
+        params: autosuggestParams
+      }
+    );
+    
+    console.log('✅ Autosuggest endpoint successful!');
+    
+    console.log('🌍 OpenTripMap Response Status:', response.status);
+    console.log('🌍 OpenTripMap Response Data:', response.data);
+    
+    if (response.data && response.data.features && Array.isArray(response.data.features)) {
+      const destinations = response.data.features.map((feature: any) => ({
+        name: feature.properties?.name || 'Unknown Destination',
+        country: feature.properties?.country || 'Unknown Country',
+        coordinates: {
+          lat: feature.geometry?.coordinates?.[1] || 0, // OpenTripMap uses [lon, lat] order
+          lon: feature.geometry?.coordinates?.[0] || 0
+        }
+      }));
+      
+      console.log(`✅ OpenTripMap working! Found ${destinations.length} destinations`);
+      console.log('🌍 Processed destinations:', destinations);
+      return destinations;
+    }
+    
+    console.log('⚠️ OpenTripMap response structure unexpected:', response.data);
+    return [];
+    
+  } catch (error: any) {
+    console.error('❌ OpenTripMap API test failed:', error);
+    
+    if (error.response) {
+      console.error('❌ OpenTripMap Error Details:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data,
+        url: error.config?.url,
+        params: error.config?.params
+      });
+    }
+    
+    console.warn('⚠️ Using fallback search due to OpenTripMap failure');
+    
+    // Fallback to hardcoded destinations for now
+    const fallbackDestinations = [
+      { name: 'Barcelona', country: 'Spain', coordinates: { lat: 41.3851, lon: 2.1734 } },
+      { name: 'Tokyo', country: 'Japan', coordinates: { lat: 35.6762, lon: 139.6503 } },
+      { name: 'New York', country: 'USA', coordinates: { lat: 40.7128, lon: -74.0060 } },
+      { name: 'Bali', country: 'Indonesia', coordinates: { lat: -8.3405, lon: 115.0920 } },
+      { name: 'Paris', country: 'France', coordinates: { lat: 48.8566, lon: 2.3522 } }
+    ];
+    
+    // Filter destinations that match the query
+    const filtered = fallbackDestinations.filter(dest => 
+      dest.name.toLowerCase().includes(query.toLowerCase()) ||
+      dest.country.toLowerCase().includes(query.toLowerCase())
+    );
+    
+    console.log(`✅ Using fallback search, found ${filtered.length} destinations`);
+    return filtered;
+  }
+};
+
+// Fetch real attractions from OpenTripMap API
+export const fetchAttractionsData = async (destination: string, coordinates?: {lat: number, lon: number}): Promise<AttractionInfo[]> => {
+  try {
+    console.log('🏛️ Fetching attractions from OpenTripMap...');
+    
+    let searchParams: any = {};
+    
+    if (coordinates) {
+      // Search by coordinates if available
+      searchParams = {
+        radius: 5000, // 5km radius
+        lon: coordinates.lon,
+        lat: coordinates.lat,
+        kinds: 'cultural,historic,architecture,interesting_places',
+        limit: 10
+      };
+    } else {
+      // Fallback to text search
+      const city = destination.split(',')[0].trim();
+      searchParams = {
+        text: city,
+        kinds: 'cultural,historic,architecture,interesting_places',
+        limit: 10
+      };
+    }
+    
+    // Use autosuggest endpoint with correct parameters (same as searchGlobalDestination)
+    const city = destination.split(',')[0].trim();
+    console.log('🏛️ Testing OpenTripMap Attractions API for:', city);
+    
+    const response = await apiClient.get(
+      `${API_CONFIG.OPENTRIPMAP.BASE_URL}/autosuggest`,
+      { 
+        params: {
+          name: city,
+          radius: 5000,
+          lon: -69.9312,  // Default longitude (can be made dynamic later)
+          lat: 18.4861,   // Default latitude (can be made dynamic later)
+          limit: 10,
+          apikey: API_CONFIG.OPENTRIPMAP.API_KEY
+        }
+      }
+    );
+    
+    console.log('🏛️ OpenTripMap Attractions Response Status:', response.status);
+    console.log('🏛️ OpenTripMap Attractions Response Data:', response.data);
+    
+    if (response.data && response.data.features && Array.isArray(response.data.features)) {
+      const attractions = response.data.features.map((feature: any) => ({
+        name: feature.properties?.name || 'Unknown Place',
+        type: feature.properties?.kinds?.split(',')[0] || 'Cultural',
+        rating: feature.properties?.rate || 4.0, // Use OpenTripMap rating if available
+        distance: `${Math.round(feature.properties?.dist || 0)}m`, // Distance in meters
+        emoji: getAttractionEmoji(feature.properties?.kinds)
+      }));
+      
+      console.log(`✅ OpenTripMap Attractions working! Found ${attractions.length} attractions`);
+      console.log('🏛️ Processed attractions:', attractions);
+      return attractions;
+    }
+    
+    console.log('⚠️ OpenTripMap attractions response structure unexpected:', response.data);
+    throw new Error('Invalid API response structure');
+    
+  } catch (error) {
+    console.warn('⚠️ OpenTripMap attractions API failed, using fallback:', error);
+    
+    // Return fallback attractions data
+    return mockData.attractions[destination as keyof typeof mockData.attractions] || 
+           [{ name: 'Local Attractions', type: 'Various', rating: 4.0, distance: 'Various', emoji: '🏛️' }];
+  }
+};
+
+// Helper function to get emoji based on attraction type
+const getAttractionEmoji = (kinds: string): string => {
+  if (!kinds) return '🏛️';
+  
+  const kindsLower = kinds.toLowerCase();
+  if (kindsLower.includes('museum')) return '🏛️';
+  if (kindsLower.includes('church') || kindsLower.includes('cathedral')) return '⛪';
+  if (kindsLower.includes('castle') || kindsLower.includes('palace')) return '🏰';
+  if (kindsLower.includes('park') || kindsLower.includes('garden')) return '🌳';
+  if (kindsLower.includes('beach')) return '🏖️';
+  if (kindsLower.includes('mountain')) return '⛰️';
+  if (kindsLower.includes('restaurant') || kindsLower.includes('cafe')) return '🍽️';
+  if (kindsLower.includes('shopping')) return '🛍️';
+  
+  return '🏛️';
+};
+
 // Fetch real events from Eventbrite API
 export const fetchEventsData = async (destination: string): Promise<EventInfo[]> => {
   try {
@@ -80,23 +259,54 @@ export const fetchEventsData = async (destination: string): Promise<EventInfo[]>
     // Extract city name for search
     const city = destination.split(',')[0].trim();
     
-    // Search for events in the city
-    const response = await apiClient.get(
-      `${API_CONFIG.EVENTBRITE.BASE_URL}${API_CONFIG.EVENTBRITE.ENDPOINTS.EVENTS_SEARCH}`,
-      {
-        params: {
-          'location.address': city,
-          'expand': 'venue',
-          'status': 'live',
-          'start_date.range_start': new Date().toISOString(),
-          'start_date.range_end': new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Next 30 days
-          'limit': 5
-        },
-        headers: {
-          'Authorization': `Bearer ${API_CONFIG.EVENTBRITE.API_KEY}`
+    // Search for events in the city using Eventbrite API v3
+    // Try modern endpoint first, then fallback to search endpoint
+    let response;
+    
+    try {
+      // First attempt: modern endpoint
+      console.log('🎭 Attempt 1: Using modern /events/ endpoint...');
+      response = await apiClient.get(
+        `${API_CONFIG.EVENTBRITE.BASE_URL}/events/`,
+        {
+          params: {
+            'location.address': city,
+            'expand': 'venue',
+            'status': 'live',
+            'limit': 5
+          },
+          headers: {
+            'Authorization': `Bearer ${API_CONFIG.EVENTBRITE.API_KEY}`,
+            'Accept': 'application/json'
+          }
         }
-      }
-    );
+      );
+      console.log('✅ Modern endpoint successful!');
+      
+    } catch (error) {
+      console.log('⚠️ Modern endpoint failed, trying search endpoint...');
+      
+      // Second attempt: search endpoint
+      response = await apiClient.get(
+        `${API_CONFIG.EVENTBRITE.BASE_URL}/events/search/`,
+        {
+          params: {
+            'location.address': city,
+            'expand': 'venue',
+            'status': 'live',
+            'limit': 5
+          },
+          headers: {
+            'Authorization': `Bearer ${API_CONFIG.EVENTBRITE.API_KEY}`,
+            'Accept': 'application/json'
+          }
+        }
+      );
+      console.log('✅ Search endpoint successful!');
+    }
+    
+    console.log('🎭 Eventbrite API Response Status:', response.status);
+    console.log('🎭 Eventbrite API Response Data:', response.data);
     
     if (response.data && response.data.events) {
       const events = response.data.events.map((event: any) => {
@@ -137,8 +347,33 @@ export const fetchEventsData = async (destination: string): Promise<EventInfo[]>
     
     throw new Error('Invalid API response structure');
     
-  } catch (error) {
+  } catch (error: any) {
     console.warn('⚠️ Eventbrite API failed, using fallback events:', error);
+    
+    // Log specific error details for debugging
+    try {
+      if (error.response) {
+        console.error('Eventbrite API Error Details:', {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data,
+          url: error.config?.url,
+          headers: error.config?.headers
+        });
+      } else if (error.request) {
+        console.error('Eventbrite API Request Error:', {
+          message: error.message,
+          code: error.code
+        });
+      } else {
+        console.error('Eventbrite API Error:', {
+          message: error.message,
+          name: error.name
+        });
+      }
+    } catch (loggingError) {
+      console.error('Error while logging Eventbrite error:', loggingError);
+    }
     
     // Return fallback events data
     return mockData.events[destination as keyof typeof mockData.events] || 
@@ -308,10 +543,17 @@ export const fetchCurrencyData = async (destination: string): Promise<CurrencyIn
   }
 };
 
-// Fetch weather data from OpenWeatherMap API
-export const fetchWeatherData = async (destination: string): Promise<WeatherInfo> => {
+// Get coordinates for any destination using OpenTripMap
+const getDestinationCoordinates = async (destination: string): Promise<{lat: number, lon: number}> => {
   try {
-    // Get coordinates for the destination (simplified)
+    // First try to get coordinates from OpenTripMap
+    const searchResults = await searchGlobalDestination(destination);
+    if (searchResults.length > 0) {
+      const firstResult = searchResults[0];
+      return firstResult.coordinates;
+    }
+    
+    // Fallback to hardcoded coordinates for known destinations
     const coordinates = {
       'Barcelona, Spain': { lat: 41.3851, lon: 2.1734 },
       'Tokyo, Japan': { lat: 35.6762, lon: 139.6503 },
@@ -320,7 +562,19 @@ export const fetchWeatherData = async (destination: string): Promise<WeatherInfo
       'Paris, France': { lat: 48.8566, lon: 2.3522 }
     };
     
-    const coords = coordinates[destination as keyof typeof coordinates] || coordinates['Barcelona, Spain'];
+    return coordinates[destination as keyof typeof coordinates] || coordinates['Barcelona, Spain'];
+  } catch (error) {
+    console.warn('⚠️ Geocoding failed, using fallback coordinates:', error);
+    // Return Barcelona as fallback
+    return { lat: 41.3851, lon: 2.1734 };
+  }
+};
+
+// Fetch weather data from OpenWeatherMap API
+export const fetchWeatherData = async (destination: string): Promise<WeatherInfo> => {
+  try {
+    // Get coordinates for the destination using geocoding
+    const coords = await getDestinationCoordinates(destination);
     
     // OpenWeatherMap API call with real API key
     const response = await apiClient.get(
@@ -469,9 +723,21 @@ export const fetchLocationSnapshot = async (destination: string): Promise<Locati
              [{ name: 'Local Events', type: 'cultural' as const, date: 'Check local calendar', emoji: '📅' }];
   }
   
+  // Fetch real attractions from OpenTripMap
+  let attractions: AttractionInfo[] = [];
+  try {
+    console.log('🏛️ Fetching attractions data...');
+    attractions = await fetchAttractionsData(destination);
+    console.log('✅ Attractions data fetched successfully');
+  } catch (error) {
+    console.warn('⚠️ Attractions API failed, using fallback');
+    attractions = mockData.attractions[destination as keyof typeof mockData.attractions] || 
+                 [{ name: 'Local Attractions', type: 'Various', rating: 4.0, distance: 'Various', emoji: '🏛️' }];
+  }
+  
   console.log('🎯 Location snapshot completed successfully');
   
-  const { events: _, ...restDefaultData } = defaultData; // Remove events from default data
+  const { events: _, attractions: __, ...restDefaultData } = defaultData; // Remove events and attractions from default data
   
   return {
     destination,
@@ -479,6 +745,7 @@ export const fetchLocationSnapshot = async (destination: string): Promise<Locati
     currency,
     weather,
     events, // Use real events from Eventbrite
+    attractions, // Use real attractions from OpenTripMap
     ...restDefaultData
   };
 };

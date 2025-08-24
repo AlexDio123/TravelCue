@@ -26,23 +26,25 @@ export const API_CONFIG = {
     }
   },
   
-  // Future APIs (commented out for now)
-  // GOOGLE_PLACES: {
-  //   BASE_URL: 'https://maps.googleapis.com/maps/api/place',
-  //   API_KEY: process.env.GOOGLE_API_KEY || '',
-  //   ENDPOINTS: {
-  //     NEARBY_SEARCH: '/nearbysearch/json',
-  //     PLACE_DETAILS: '/details/json'
-  //   }
-  // },
+  // OpenTripMap API for global search and attractions
+  OPENTRIPMAP: {
+    BASE_URL: 'https://api.opentripmap.com/0.1/en/places',
+    API_KEY: process.env.NEXT_PUBLIC_OPENTRIPMAP_API_KEY || '5ae2e3f221c38a28845f05b6aef41c645af941de9643f5df60be1916',
+    ENDPOINTS: {
+      AUTOSUGGEST: '/autosuggest',
+      SEARCH: '/autosuggest', // Using autosuggest for search as well
+      PLACE_DETAILS: '/xid'
+    }
+  },
   
   // Eventbrite API for real events
   EVENTBRITE: {
     BASE_URL: 'https://www.eventbriteapi.com/v3',
-    API_KEY: process.env.NEXT_PUBLIC_EVENTBRITE_PRIVATE_TOKEN || 'REUB5TT5TEJEPCQIIB4I',
+    API_KEY: process.env.NEXT_PUBLIC_EVENTBRITE_API_KEY || 'FFXFUHT2XNQWZ4MUAE', // Using API Key instead of Private Token
     ENDPOINTS: {
       EVENTS_SEARCH: '/events/search',
-      VENUES: '/venues'
+      VENUES: '/venues',
+      ORGANIZATIONS: '/organizations'
     }
   }
 };
@@ -64,6 +66,10 @@ export const RATE_LIMITS = {
   EVENTBRITE: {
     REQUESTS_PER_MINUTE: 10,
     REQUESTS_PER_DAY: 1000
+  },
+  OPENTRIPMAP: {
+    REQUESTS_PER_MINUTE: 5,
+    REQUESTS_PER_DAY: 5000
   }
 };
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import SearchForm from '@/components/SearchForm';
+import GlobalSearchForm from '@/components/GlobalSearchForm';
 import LocationSnapshotCard from '@/components/LocationSnapshotCard';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { fetchLocationSnapshot } from '@/services/api';
@@ -36,8 +36,8 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <div className="container mx-auto px-4 py-8">
-        {/* Search Form */}
-        <SearchForm onSearch={handleSearch} isLoading={isLoading} />
+              {/* Global Search Form */}
+      <GlobalSearchForm onSearch={handleSearch} isLoading={isLoading} />
         
         {/* Loading State */}
         {isLoading && (
