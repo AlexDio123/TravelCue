@@ -36,14 +36,12 @@ export const API_CONFIG = {
     }
   },
   
-  // Eventbrite API for real events
-  EVENTBRITE: {
-    BASE_URL: 'https://www.eventbriteapi.com/v3',
-    API_KEY: process.env.NEXT_PUBLIC_EVENTBRITE_API_KEY || 'FFXFUHT2XNQWZ4MUAE', // Using API Key instead of Private Token
+  // PredictHQ API for real events worldwide
+  PREDICTHQ: {
+    BASE_URL: 'https://api.predicthq.com/v1',
+    API_KEY: process.env.NEXT_PUBLIC_PREDICTHQ_API_KEY || 'wI_fKzEcKWp21C2ZOno8Nz1TL2A_p30bJ5Ii7JKA',
     ENDPOINTS: {
-      EVENTS_SEARCH: '/events/search',
-      VENUES: '/venues',
-      ORGANIZATIONS: '/organizations'
+      EVENTS: '/events'
     }
   }
 };
@@ -62,7 +60,7 @@ export const RATE_LIMITS = {
     REQUESTS_PER_MINUTE: 5,
     REQUESTS_PER_DAY: 100
   },
-  EVENTBRITE: {
+  PREDICTHQ: {
     REQUESTS_PER_MINUTE: 10,
     REQUESTS_PER_DAY: 1000
   },

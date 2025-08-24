@@ -59,6 +59,8 @@ export interface EventInfo {
   date: string;
   emoji: string;
   venue?: string;
+  eventId?: string; // PredictHQ event ID for reference
+  coverImage?: string; // Event cover image URL
 }
 
 export interface AttractionInfo {

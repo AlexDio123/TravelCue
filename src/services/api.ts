@@ -219,135 +219,178 @@ export const fetchAttractionsData = async (destination: string, coordinates?: {l
 
 
 
-// Fetch real events from Eventbrite API
+// Fetch real events from PredictHQ API
 export const fetchEventsData = async (destination: string): Promise<EventInfo[]> => {
   try {
-    console.log('🎭 Fetching events from Eventbrite API...');
+    console.log('🎭 Fetching real events from PredictHQ API...');
     
     // Extract city name for search
     const city = destination.split(',')[0].trim();
     
-    // Search for events in the city using Eventbrite API v3
-    // Try modern endpoint first, then fallback to search endpoint
-    let response;
-    
+    // Get coordinates for the destination using OpenCage
+    let coordinates: { lat: number; lon: number } | null = null;
     try {
-      // First attempt: modern endpoint
-      console.log('🎭 Attempt 1: Using modern /events/ endpoint...');
-      response = await apiClient.get(
-        `${API_CONFIG.EVENTBRITE.BASE_URL}/events/`,
-        {
-          params: {
-            'location.address': city,
-            'expand': 'venue',
-            'status': 'live',
-            'limit': 5
-          },
-          headers: {
-            'Authorization': `Bearer ${API_CONFIG.EVENTBRITE.API_KEY}`,
-            'Accept': 'application/json'
-          }
-        }
-      );
-      console.log('✅ Modern endpoint successful!');
-      
+      const searchResults = await searchGlobalDestination(destination);
+      if (searchResults.length > 0) {
+        coordinates = searchResults[0].coordinates;
+        console.log('📍 Got coordinates for PredictHQ events search:', coordinates);
+      }
     } catch (error) {
-      console.log('⚠️ Modern endpoint failed, trying search endpoint...');
-      
-      // Second attempt: search endpoint
-      response = await apiClient.get(
-        `${API_CONFIG.EVENTBRITE.BASE_URL}/events/search/`,
-        {
-          params: {
-            'location.address': city,
-            'expand': 'venue',
-            'status': 'live',
-            'limit': 5
-          },
-          headers: {
-            'Authorization': `Bearer ${API_CONFIG.EVENTBRITE.API_KEY}`,
-            'Accept': 'application/json'
-          }
-        }
-      );
-      console.log('✅ Search endpoint successful!');
+      console.log('⚠️ Could not get coordinates for PredictHQ events search');
     }
     
-    console.log('🎭 Eventbrite API Response Status:', response.status);
-    console.log('🎭 Eventbrite API Response Data:', response.data);
+    if (!coordinates) {
+      console.log('⚠️ No coordinates available, using fallback events');
+      return generateFallbackEvents(city);
+    }
     
-    if (response.data && response.data.events) {
-      const events = response.data.events.map((event: any) => {
+    // Search for events using PredictHQ API
+    const predicthqUrl = `${API_CONFIG.PREDICTHQ.BASE_URL}${API_CONFIG.PREDICTHQ.ENDPOINTS.EVENTS}`;
+    const params = new URLSearchParams({
+      'within': `10km@${coordinates.lat},${coordinates.lon}`,
+      'limit': '10',
+      'active.gte': new Date().toISOString(),
+      'active.lte': new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Next 30 days
+      'category': 'community,concerts,conferences,expos,festivals,performing-arts,sports'
+    });
+    
+    console.log('🌐 Calling PredictHQ API for events...');
+    const response = await fetch(`${predicthqUrl}?${params}`, {
+      headers: {
+        'Authorization': `Bearer ${API_CONFIG.PREDICTHQ.API_KEY}`,
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`PredictHQ API error: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('✅ PredictHQ API response:', data);
+    
+    if (data.results && Array.isArray(data.results) && data.results.length > 0) {
+      const events = data.results.map((event: any) => {
         // Determine event type based on category
         let eventType: 'music' | 'sports' | 'cultural' | 'other' = 'other';
         let emoji = '📅';
         
-        if (event.category && event.category.name) {
-          const category = event.category.name.toLowerCase();
-          if (category.includes('music') || category.includes('concert')) {
-            eventType = 'music';
-            emoji = '🎸';
-          } else if (category.includes('sport') || category.includes('fitness')) {
-            eventType = 'sports';
-            emoji = '⚽';
-          } else if (category.includes('art') || category.includes('culture') || category.includes('food')) {
-            eventType = 'cultural';
-            emoji = '🎭';
+        const category = event.category || '';
+        if (category.includes('concerts') || category.includes('performing-arts')) {
+          eventType = 'music';
+          emoji = '🎸';
+        } else if (category.includes('sports')) {
+          eventType = 'sports';
+          emoji = '⚽';
+        } else if (category.includes('festivals') || category.includes('community') || category.includes('conferences') || category.includes('expos')) {
+          eventType = 'cultural';
+          emoji = '🎭';
+        }
+        
+        // Format the date
+        let formattedDate = 'Check PredictHQ for details';
+        if (event.start) {
+          try {
+            const startDate = new Date(event.start);
+            formattedDate = startDate.toLocaleDateString('en-US', { 
+              month: 'short', 
+              day: 'numeric',
+              year: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit'
+            });
+          } catch (error) {
+            console.log('⚠️ Could not parse event date:', event.start);
           }
         }
         
         return {
-          name: event.name.text,
+          name: event.title || 'Untitled Event',
           type: eventType,
-          date: new Date(event.start.local).toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric',
-            year: 'numeric' 
-          }),
+          date: formattedDate,
           emoji: emoji,
-          venue: event.venue?.name || 'Various venues'
+          venue: event.place?.name || event.venue?.name || 'Various venues',
+          eventId: event.id,
+          coverImage: event.cover_image || event.image
         };
       });
       
-      console.log(`✅ Found ${events.length} events from Eventbrite`);
+      console.log(`✅ Found ${events.length} real events from PredictHQ for ${city}`);
       return events;
     }
     
-    throw new Error('Invalid API response structure');
+    console.log('⚠️ No events found from PredictHQ, using fallback');
+    return generateFallbackEvents(city);
     
   } catch (error: any) {
-    console.warn('⚠️ Eventbrite API failed, using fallback events:', error);
+    console.warn('⚠️ PredictHQ API failed, using fallback events:', error);
     
     // Log specific error details for debugging
-    try {
-      if (error.response) {
-        console.error('Eventbrite API Error Details:', {
-          status: error.response.status,
-          statusText: error.response.statusText,
-          data: error.response.data,
-          url: error.config?.url,
-          headers: error.config?.headers
-        });
-      } else if (error.request) {
-        console.error('Eventbrite API Request Error:', {
-          message: error.message,
-          code: error.code
-        });
-      } else {
-        console.error('Eventbrite API Error:', {
-          message: error.message,
-          name: error.name
-        });
-      }
-    } catch (loggingError) {
-      console.error('Error while logging Eventbrite error:', loggingError);
+    if (error.response) {
+      console.error('❌ PredictHQ API Error Details:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data,
+        url: error.config?.url,
+        params: error.config?.params
+      });
     }
     
-    // Return fallback events data
-    return mockData.events[destination as keyof typeof mockData.events] || 
-           [{ name: 'Local Events', type: 'cultural' as const, date: 'Check local calendar', emoji: '📅' }];
+    // Extract city name for fallback
+    const city = destination.split(',')[0].trim();
+    return generateFallbackEvents(city);
   }
 };
+
+// Generate simple, scalable fallback events
+const generateFallbackEvents = (city: string): EventInfo[] => {
+  const now = Date.now();
+  const oneWeek = 7 * 24 * 60 * 60 * 1000;
+  const twoWeeks = 14 * 24 * 60 * 60 * 1000;
+  const threeWeeks = 21 * 24 * 60 * 60 * 1000;
+  const fourWeeks = 28 * 24 * 60 * 60 * 1000;
+  const fiveWeeks = 35 * 24 * 60 * 60 * 1000;
+  
+  return [
+    {
+      name: `${city} Cultural Festival`,
+      type: 'cultural',
+      date: new Date(now + oneWeek).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      emoji: '🎭',
+      venue: 'City Center'
+    },
+    {
+      name: `${city} Music Night`,
+      type: 'music',
+      date: new Date(now + twoWeeks).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      emoji: '🎸',
+      venue: 'Local Arena'
+    },
+    {
+      name: `${city} Food & Wine Expo`,
+      type: 'cultural',
+      date: new Date(now + threeWeeks).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      emoji: '🍷',
+      venue: 'Convention Center'
+    },
+    {
+      name: `${city} Sports Championship`,
+      type: 'sports',
+      date: new Date(now + fourWeeks).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      emoji: '⚽',
+      venue: 'Stadium'
+    },
+    {
+      name: `${city} Art Exhibition`,
+      type: 'cultural',
+      date: new Date(now + fiveWeeks).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      emoji: '🎨',
+      venue: 'Art Gallery'
+    }
+  ];
+};
+
+
 
 // Get default data for a destination
 const getDefaultData = (destination: string) => {
