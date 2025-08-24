@@ -1,22 +1,13 @@
 import { TimezoneInfo } from '@/types';
 import { Clock, Globe } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useClientDate } from '@/hooks/useClientDate';
 
 interface TimezoneCardProps {
   timezone: TimezoneInfo;
 }
 
 export default function TimezoneCard({ timezone }: TimezoneCardProps) {
-  const [currentTime, setCurrentTime] = useState(new Date());
-  
-  // Update time every minute to keep it current
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 60000); // Update every minute
-    
-    return () => clearInterval(interval);
-  }, []);
+  const { currentTime, isClient } = useClientDate();
   
   const formatTime = (isoString: string) => {
     try {
@@ -50,6 +41,10 @@ export default function TimezoneCard({ timezone }: TimezoneCardProps) {
 
   const formatLocalTime = () => {
     try {
+      if (!isClient || !currentTime) {
+        return 'Loading...';
+      }
+      
       // Use the state variable that updates every minute
       const hours = currentTime.getHours();
       const minutes = currentTime.getMinutes();
@@ -57,7 +52,7 @@ export default function TimezoneCard({ timezone }: TimezoneCardProps) {
       const displayHours = hours % 12 || 12;
       
       const formattedTime = `${displayHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
-      console.log('🕐 formatLocalTime called:', { hours, minutes, ampm, formattedTime });
+      // formatLocalTime called
       
       return formattedTime;
     } catch {
@@ -76,7 +71,7 @@ export default function TimezoneCard({ timezone }: TimezoneCardProps) {
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-600">Current Time</span>
           <span className="font-mono text-lg font-semibold text-gray-800">
-            {formatTime(timezone.currentTime)}
+            {isClient ? formatTime(timezone.currentTime) : 'Loading...'}
           </span>
         </div>
         

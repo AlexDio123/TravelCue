@@ -75,8 +75,7 @@ const mockData = {
 // Global destination search using OpenCage Geocoding API
 export const searchGlobalDestination = async (query: string): Promise<Array<{name: string, country: string, coordinates: {lat: number, lon: number}}>> => {
   try {
-    console.log('🌍 Using OpenCage Geocoding API for destination search...');
-    console.log('🌍 Searching for destination:', query);
+    // Using OpenCage Geocoding API for destination search
     
     // OpenCage Geocoding API with your real key (free tier: 2,500 requests/day)
     const response = await apiClient.get('https://api.opencagedata.com/geocode/v1/json', {
@@ -89,9 +88,8 @@ export const searchGlobalDestination = async (query: string): Promise<Array<{nam
       }
     });
     
-    console.log('✅ OpenCage API successful!');
-    console.log('🌍 OpenCage Response Status:', response.status);
-    console.log('🌍 OpenCage Response Data:', response.data);
+          // OpenCage API successful
+          // OpenCage Response received
     
     if (response.data && response.data.results && Array.isArray(response.data.results)) {
       const destinations = response.data.results.map((result: { components: { city?: string; town?: string; village?: string; county?: string; country?: string }; geometry?: { lat: number; lng: number } }) => {
@@ -108,16 +106,16 @@ export const searchGlobalDestination = async (query: string): Promise<Array<{nam
           coordinates
         };
         
-        console.log('🌍 Processed destination:', destination);
+        // Processed destination
         return destination;
       });
       
-      console.log(`✅ OpenCage working! Found ${destinations.length} destinations`);
-      console.log('🌍 All processed destinations:', destinations);
+              // OpenCage working, found destinations
+      // All processed destinations
       return destinations;
     }
     
-    console.log('⚠️ OpenCage response structure unexpected:', response.data);
+          // OpenCage response structure unexpected
     return [];
     
   } catch (error: unknown) {
@@ -151,7 +149,7 @@ export const searchGlobalDestination = async (query: string): Promise<Array<{nam
       dest.country.toLowerCase().includes(query.toLowerCase())
     );
     
-    console.log(`✅ Using fallback search, found ${filtered.length} destinations`);
+          // Using fallback search, found destinations
     return filtered;
   }
 };
@@ -184,7 +182,7 @@ export const fetchAttractionsData = async (destination: string, coordinates?: {l
         }
       } catch (reverseError: unknown) {
         const errorMessage = reverseError instanceof Error ? reverseError.message : 'Unknown error';
-        console.log('⚠️ Reverse geocoding for attractions failed:', errorMessage);
+        // Reverse geocoding for attractions failed
         locationContext = destination;
       }
     } else {
@@ -200,7 +198,7 @@ export const fetchAttractionsData = async (destination: string, coordinates?: {l
       { name: 'Historic Fortress', type: 'Historic', rating: 4.3, distance: '2.0km', emoji: '🏰' }
     ];
     
-    console.log(`✅ Generated ${mockAttractions.length} mock attractions for: ${locationContext}`);
+          // Generated mock attractions
     return mockAttractions;
     
   } catch (error: unknown) {
@@ -238,11 +236,11 @@ export const fetchEventsData = async (destination: string): Promise<EventInfo[]>
         console.log('📍 Got coordinates for PredictHQ events search:', coordinates);
       }
     } catch (error) {
-      console.log('⚠️ Could not get coordinates for PredictHQ events search');
+      // Could not get coordinates for PredictHQ events search
     }
     
     if (!coordinates) {
-      console.log('⚠️ No coordinates available, using fallback events');
+      // No coordinates available, using fallback events
       return generateFallbackEvents(city);
     }
     
@@ -269,7 +267,7 @@ export const fetchEventsData = async (destination: string): Promise<EventInfo[]>
     }
     
     const data = await response.json();
-    console.log('✅ PredictHQ API response:', data);
+          // PredictHQ API response received
     
     if (data.results && Array.isArray(data.results) && data.results.length > 0) {
       const events = data.results.map((event: { category?: string; title?: string; start?: string; place?: { name?: string }; venue?: { name?: string }; id: string; cover_image?: string; image?: string }) => {
@@ -302,7 +300,7 @@ export const fetchEventsData = async (destination: string): Promise<EventInfo[]>
               minute: '2-digit'
             });
           } catch (error) {
-            console.log('⚠️ Could not parse event date:', event.start);
+            // Could not parse event date
           }
         }
         
@@ -317,11 +315,11 @@ export const fetchEventsData = async (destination: string): Promise<EventInfo[]>
         };
       });
       
-      console.log(`✅ Found ${events.length} real events from PredictHQ for ${city}`);
+      // Found real events from PredictHQ
       return events;
     }
     
-    console.log('⚠️ No events found from PredictHQ, using fallback');
+          // No events found from PredictHQ, using fallback
     return generateFallbackEvents(city);
     
   } catch (error: unknown) {
@@ -422,7 +420,7 @@ const getDefaultData = (destination: string) => {
 // Fetch timezone data with dynamic detection using OpenCage and user timezone detection
 export const fetchTimezoneData = async (destination: string): Promise<TimezoneInfo> => {
   try {
-    console.log('🌍 Detecting timezone for destination:', destination);
+    // Detecting timezone for destination
     
     // Detect user's current timezone
     const getUserTimezone = (): { timezone: string; offset: number } => {
@@ -435,11 +433,11 @@ export const fetchTimezoneData = async (destination: string): Promise<TimezoneIn
         // We want to convert this to -4 hours for our calculations
         const userOffset = -(now.getTimezoneOffset() / 60); // Convert to hours and negate
         
-        console.log('👤 User timezone detected:', userTimezone, `(UTC${userOffset >= 0 ? '+' : ''}${userOffset})`);
+        // User timezone detected
         
         return { timezone: userTimezone, offset: userOffset };
       } catch (error) {
-        console.log('⚠️ Could not detect user timezone, using UTC');
+        // Could not detect user timezone, using UTC
         return { timezone: 'UTC', offset: 0 };
       }
     };
@@ -456,103 +454,137 @@ export const fetchTimezoneData = async (destination: string): Promise<TimezoneIn
       if (searchResults.length > 0) {
         detectedCountry = searchResults[0].country;
         coordinates = searchResults[0].coordinates;
-        console.log('✅ Country and coordinates detected for timezone:', detectedCountry, coordinates);
+        // Country and coordinates detected for timezone
       }
     } catch (error) {
-      console.log('⚠️ Country/coordinate detection failed for timezone, using fallback');
+      // Country/coordinate detection failed for timezone, using fallback
     }
     
-    // Determine timezone using country information from OpenCage
+    // Get timezone directly from OpenCage response - much simpler and more reliable!
     let timezoneInfo: { timezone: string; diff: number; dst: boolean } | null = null;
     
-    if (detectedCountry) {
-      console.log('🔍 Using country for timezone detection:', detectedCountry);
+    if (coordinates) {
+      // Using coordinates for timezone detection
       
-      // Construct timezone API URL directly from country information
-      // This is much more reliable than hardcoded mappings
-      const countryToTimezone: Record<string, string> = {
-        'Colombia': 'America/Bogota',
-        'Brazil': 'America/Sao_Paulo',
-        'Argentina': 'America/Argentina/Buenos_Aires',
-        'Chile': 'America/Santiago',
-        'Peru': 'America/Lima',
-        'Venezuela': 'America/Caracas',
-        'Ecuador': 'America/Guayaquil',
-        'United States': 'America/New_York',
-        'Canada': 'America/Toronto',
-        'Mexico': 'America/Mexico_City',
-        'Spain': 'Europe/Madrid',
-        'France': 'Europe/Paris',
-        'Germany': 'Europe/Berlin',
-        'Italy': 'Europe/Rome',
-        'United Kingdom': 'Europe/London',
-        'Japan': 'Asia/Tokyo',
-        'China': 'Asia/Shanghai',
-        'Australia': 'Australia/Sydney',
-        'Dominican Republic': 'America/Santo_Domingo'
-      };
-      
-      const timezoneName = countryToTimezone[detectedCountry];
-      if (timezoneName) {
-        console.log('✅ Constructing WorldTime API URL for:', detectedCountry, '->', timezoneName);
+      try {
+        // Getting timezone from OpenCage reverse geocoding
         
-        // Call WorldTime API directly with the constructed timezone
-        try {
-          const response = await apiClient.get(`https://worldtimeapi.org/api/timezone/${timezoneName}`, {
-            timeout: 5000
-          });
-          
-          const data = response.data;
-          if (data && data.utc_offset) {
-            timezoneInfo = {
-              timezone: data.timezone,
-              diff: parseFloat(data.utc_offset),
-              dst: data.dst || false
-            };
-            console.log('✅ Timezone data fetched from WorldTime API:', timezoneInfo);
+        // Use OpenCage reverse geocoding to get timezone info
+        const reverseResponse = await apiClient.get('https://api.opencagedata.com/geocode/v1/json', {
+          params: {
+            q: `${coordinates.lat},${coordinates.lon}`,
+            key: '74ecbe1c772e4786b69adbb3fc4f724a',
+            limit: 1
           }
-        } catch (error) {
-          console.log('⚠️ WorldTime API failed for timezone:', timezoneName);
-          console.log('❌ API Error details:', error);
+        });
+        
+        if (reverseResponse.data && reverseResponse.data.results && reverseResponse.data.results.length > 0) {
+          const result = reverseResponse.data.results[0];
+          const components = result.components;
+          
+          // OpenCage response components and annotations available
+          console.log('🌍 OpenCage response for timezone:', result.annotations);
+          
+          // OpenCage provides timezone info in the annotations
+          if (result.annotations && result.annotations.timezone) {
+            const timezoneName = result.annotations.timezone.name;
+            const timezoneOffset = result.annotations.timezone.offset_sec;
+            console.log('✅ Found timezone in OpenCage:', timezoneName, 'offset:', timezoneOffset);
+            
+            // Calculate timezone info directly from OpenCage data
+            if (timezoneOffset !== undefined) {
+              const offsetHours = timezoneOffset / 3600; // Convert seconds to hours
+              timezoneInfo = {
+                timezone: timezoneName,
+                diff: offsetHours,
+                dst: false // OpenCage doesn't provide DST info, but we can calculate current time
+              };
+              console.log('✅ Timezone data calculated from OpenCage:', timezoneInfo);
+            } else {
+              // Fallback: Try WorldTime API (but it often has CORS issues)
+              try {
+                // Trying WorldTime API as fallback
+                const timezoneResponse = await apiClient.get(`https://worldtimeapi.org/api/timezone/${timezoneName}`, {
+                  timeout: 5000
+                });
+                
+                const timezoneData = timezoneResponse.data;
+                if (timezoneData && timezoneData.utc_offset) {
+                  timezoneInfo = {
+                    timezone: timezoneData.timezone,
+                    diff: parseFloat(timezoneData.utc_offset),
+                    dst: timezoneData.dst || false
+                  };
+                  // Timezone data from WorldTime API fallback
+                }
+                             } catch (timezoneError) {
+                 // WorldTime API fallback also failed (CORS issue)
+                
+                // Final fallback: Use OpenCage timezone name and estimate offset from coordinates
+                const estimatedOffset = Math.round(coordinates.lon / 15);
+                timezoneInfo = {
+                  timezone: timezoneName,
+                  diff: estimatedOffset,
+                  dst: false
+                };
+                // Using estimated timezone offset as final fallback
+              }
+            }
+          } else {
+            // No timezone info in OpenCage response, using coordinate estimation
+            // Fallback: Estimate timezone from longitude
+            const estimatedOffset = Math.round(coordinates.lon / 15);
+            timezoneInfo = {
+              timezone: 'UTC',
+              diff: estimatedOffset,
+              dst: false
+            };
+            // Using coordinate-based timezone estimation
+          }
         }
-      } else {
-        console.log('❌ No timezone mapping found for country:', detectedCountry);
+      } catch (reverseError) {
+        // OpenCage reverse geocoding for timezone failed, using coordinate estimation
+        // Final fallback: Estimate timezone from longitude
+        const estimatedOffset = Math.round(coordinates.lon / 15);
+        timezoneInfo = {
+          timezone: 'UTC',
+          diff: estimatedOffset,
+          dst: false
+        };
+        // Using coordinate-based timezone estimation as final fallback
       }
     }
     
-    // Fallback: use UTC if no timezone info available
+    // Final fallback: use UTC if no timezone info available
     if (!timezoneInfo) {
       timezoneInfo = { timezone: 'UTC', diff: 0, dst: false };
-      console.log('⚠️ Using UTC fallback for timezone');
+      // Using UTC fallback for timezone
     }
     
-    console.log('✅ Final timezone info:', timezoneInfo);
+    // Final timezone info calculated
     
     // Calculate time difference between user and destination
     const timeDifference = timezoneInfo.diff - userTimezone.offset;
     const isSameTimezone = Math.abs(timeDifference) < 0.1; // Within 6 minutes
     
-    console.log(`⏰ Time difference: User (UTC${userTimezone.offset >= 0 ? '+' : ''}${userTimezone.offset}) vs Destination (UTC${timezoneInfo.diff >= 0 ? '+' : ''}${timezoneInfo.diff}) = ${timeDifference >= 0 ? '+' : ''}${timeDifference}h`);
+    // Time difference calculated between user and destination
     
     // Try WorldTime API with the correct timezone format
-    console.log('🌐 Calling WorldTime API for timezone:', timezoneInfo.timezone);
+    // Calling WorldTime API for timezone
     try {
       const response = await apiClient.get(`https://worldtimeapi.org/api/timezone/${timezoneInfo.timezone}`, {
         timeout: 5000 // 5 second timeout
       });
       
       const data = response.data;
-      console.log('✅ WorldTime API response:', data);
+      // WorldTime API response received
       
       if (data && data.datetime) {
         // Parse the destination time from the API
         const destinationTime = new Date(data.datetime);
         const userTime = new Date();
         
-        console.log('🕐 API returned destination time:', data.datetime);
-        console.log('🕐 Parsed destination time:', destinationTime.toISOString());
-        console.log('🕐 User\'s current time:', userTime.toISOString());
-        console.log('🕐 UTC offset from API:', data.utc_offset);
+        // API returned destination time and UTC offset
         
         // Format time difference display
         let timeDifferenceDisplay: string;
@@ -570,7 +602,7 @@ export const fetchTimezoneData = async (destination: string): Promise<TimezoneIn
           }
         }
         
-        console.log('🎯 Returning timezone data with destination time from API:', data.datetime);
+        // Returning timezone data with destination time from API
         return {
           timezone: data.timezone,
           currentTime: data.datetime,
@@ -585,17 +617,13 @@ export const fetchTimezoneData = async (destination: string): Promise<TimezoneIn
       throw new Error('Invalid API response');
       
     } catch (error) {
-      console.log('⚠️ WorldTime API failed, falling back to calculated time');
-      console.log('❌ API Error details:', error instanceof Error ? error.message : String(error));
+      // WorldTime API failed, falling back to calculated time
       
       // Fallback: Calculate current time in destination timezone using our mapping
       const now = new Date();
       const destinationTime = new Date(now.getTime() + (timezoneInfo.diff * 60 * 60 * 1000));
       
-      console.log('🕐 Fallback: Calculating destination time using timezone diff');
-      console.log('🕐 Current UTC time:', now.toISOString());
-      console.log('🕐 Destination timezone diff:', timezoneInfo.diff);
-      console.log('🕐 Calculated destination time:', destinationTime.toISOString());
+      // Fallback: Calculating destination time using timezone diff
       
       // Format time difference display
       let timeDifferenceDisplay: string;
@@ -613,7 +641,7 @@ export const fetchTimezoneData = async (destination: string): Promise<TimezoneIn
         }
       }
       
-      console.log('🎯 Returning fallback calculated timezone data');
+      // Returning fallback calculated timezone data
       return {
         timezone: timezoneInfo.timezone,
         currentTime: destinationTime.toISOString(),
@@ -840,11 +868,11 @@ const getCurrencyForCountry = (countryName: string): { code: string; symbol: str
     // Enhanced currency detection using OpenCage geocoding
 export const detectCountryFromDestination = async (destination: string): Promise<string> => {
   try {
-    console.log('🌍 Detecting country for destination:', destination);
+    // Detecting country for destination
     
     // Try OpenCage Geocoding API for accurate country detection - Using your real API key
     try {
-      console.log('🌍 Using OpenCage Geocoding API for country detection...');
+      // Using OpenCage Geocoding API for country detection
       
       // OpenCage Geocoding API with your real key (free tier: 2,500 requests/day)
       const response = await apiClient.get('https://api.opencagedata.com/geocode/v1/json', {
@@ -890,7 +918,7 @@ export const detectCountryFromDestination = async (destination: string): Promise
         
         // If we still don't have a country, try reverse geocoding with coordinates
         if (firstResult.coordinates && firstResult.coordinates.lat && firstResult.coordinates.lon) {
-          console.log('🌍 Using coordinates from OpenCage for reverse geocoding...');
+          // Using coordinates from OpenCage for reverse geocoding
           
           try {
             // Use OpenCage reverse geocoding with coordinates
@@ -949,36 +977,52 @@ export const fetchCurrencyData = async (destination: string): Promise<CurrencyIn
     
     // Step 1: Detect the country
     const country = await detectCountryFromDestination(destination);
-    console.log('🌍 Detected country:', country);
+    // Detected country
     
     // Step 2: Get currency for the country
     const currencyInfo = getCurrencyForCountry(country);
     console.log('💱 Currency info:', currencyInfo);
     
-    // Step 3: Use reliable fallback rates (APIs are often unreliable)
-    console.log('💰 Using reliable fallback rates (APIs are often unreliable)...');
+    // Step 3: Try to get real exchange rate from API
+    console.log('💰 Trying ExchangeRate API for real rates...');
     
     let rate = 1.0;
     
-    const fallbackRates = {
-      'EUR': 0.85, 'JPY': 150.0, 'GBP': 0.75, 'CAD': 1.35,
-      'AUD': 1.50, 'CHF': 0.90, 'CNY': 7.20, 'INR': 83.0,
-      'BRL': 5.20, 'MXN': 18.50, 'ARS': 850.0, 'CLP': 950.0,
-      'COP': 3900.0, 'PEN': 3.80, 'UYU': 38.0, 'PYG': 7200.0,
-      'BOB': 6.90, 'DOP': 58.75, 'HTG': 132.0, 'JMD': 155.0,
-      'TTD': 6.75, 'BBD': 2.0, 'BSD': 1.0, 'CUP': 24.0,
-      'CRC': 520.0, 'NIO': 36.0, 'HNL': 24.5, 'GTQ': 7.80,
-      'BZD': 2.0, 'IDR': 15000.0, 'THB': 35.0, 'VND': 24000.0,
-      'MYR': 4.70, 'SGD': 1.35, 'PHP': 55.0, 'TWD': 31.0,
-      'HKD': 7.80, 'KRW': 1300.0, 'AED': 3.67, 'SAR': 3.75,
-      'QAR': 3.64, 'KWD': 0.31, 'BHD': 0.38, 'OMR': 0.38,
-      'JOD': 0.71, 'LBP': 89000.0, 'ILS': 3.65, 'TRY': 30.0,
-      'ZAR': 18.50, 'EGP': 31.0, 'NGN': 1200.0, 'KES': 160.0,
-      'MAD': 10.0, 'GHS': 12.0, 'ETB': 55.0, 'UGX': 3800.0
-    };
-    
-    rate = fallbackRates[currencyInfo.code as keyof typeof fallbackRates] || 1.0;
-    console.log(`✅ Using reliable fallback rate for ${currencyInfo.code}: ${rate}`);
+    try {
+      // Try ExchangeRate API first
+      const response = await apiClient.get('https://api.exchangerate-api.com/v4/latest/USD');
+      const data = response.data;
+      
+      if (data && data.rates && data.rates[currencyInfo.code]) {
+        rate = data.rates[currencyInfo.code];
+        console.log(`✅ Real exchange rate from API: ${currencyInfo.code} = ${rate}`);
+      } else {
+        throw new Error('Invalid API response structure');
+      }
+    } catch (apiError) {
+      console.log('⚠️ ExchangeRate API failed, using fallback rates');
+      
+      // Fallback to hardcoded rates
+      const fallbackRates = {
+        'EUR': 0.85, 'JPY': 150.0, 'GBP': 0.75, 'CAD': 1.35,
+        'AUD': 1.50, 'CHF': 0.90, 'CNY': 7.20, 'INR': 83.0,
+        'BRL': 5.20, 'MXN': 18.50, 'ARS': 850.0, 'CLP': 950.0,
+        'COP': 3900.0, 'PEN': 3.80, 'UYU': 38.0, 'PYG': 7200.0,
+        'BOB': 6.90, 'DOP': 58.75, 'HTG': 132.0, 'JMD': 155.0,
+        'TTD': 6.75, 'BBD': 2.0, 'BSD': 1.0, 'CUP': 24.0,
+        'CRC': 520.0, 'NIO': 36.0, 'HNL': 24.5, 'GTQ': 7.80,
+        'BZD': 2.0, 'IDR': 15000.0, 'THB': 35.0, 'VND': 24000.0,
+        'MYR': 4.70, 'SGD': 1.35, 'PHP': 55.0, 'TWD': 31.0,
+        'HKD': 7.80, 'KRW': 1300.0, 'AED': 3.67, 'SAR': 3.75,
+        'QAR': 3.64, 'KWD': 0.31, 'BHD': 0.38, 'OMR': 0.38,
+        'JOD': 0.71, 'LBP': 89000.0, 'ILS': 3.65, 'TRY': 30.0,
+        'ZAR': 18.50, 'EGP': 31.0, 'NGN': 1200.0, 'KES': 160.0,
+        'MAD': 10.0, 'GHS': 12.0, 'ETB': 55.0, 'UGX': 3800.0
+      };
+      
+      rate = fallbackRates[currencyInfo.code as keyof typeof fallbackRates] || 1.0;
+      console.log(`✅ Using fallback rate for ${currencyInfo.code}: ${rate}`);
+    }
     
     // Generate realistic trend data (in a real app, this would come from historical data)
     const trend = Math.random() > 0.5 ? 'up' : 'down';
@@ -1134,7 +1178,6 @@ export const fetchWeatherData = async (destination: string): Promise<WeatherInfo
 
 // Fetch complete location snapshot with robust error handling
 export const fetchLocationSnapshot = async (destination: string): Promise<LocationSnapshot> => {
-  console.log(`🔍 Fetching data for: ${destination}`);
   
   // Get default data first
   const defaultData = getDefaultData(destination);
@@ -1176,25 +1219,19 @@ export const fetchLocationSnapshot = async (destination: string): Promise<Locati
   
   // Try to fetch real data, but don't fail if APIs are down
   try {
-    console.log('📡 Fetching timezone data...');
     timezone = await fetchTimezoneData(destination);
-    console.log('✅ Timezone data fetched successfully');
   } catch (error) {
     console.warn('⚠️ Timezone API failed, using fallback');
   }
   
   try {
-    console.log('💰 Fetching currency data...');
     currency = await fetchCurrencyData(destination);
-    console.log('✅ Currency data fetched successfully');
   } catch (error) {
     console.warn('⚠️ Currency API failed, using fallback');
   }
   
   try {
-    console.log('🌤️ Fetching weather data...');
     weather = await fetchWeatherData(destination);
-    console.log('✅ Weather data fetched successfully');
   } catch (error) {
     console.warn('⚠️ Weather API failed, using fallback');
   }
@@ -1202,9 +1239,7 @@ export const fetchLocationSnapshot = async (destination: string): Promise<Locati
       // Fetch real events from PredictHQ
   let events: EventInfo[] = [];
   try {
-    console.log('🎭 Fetching events data...');
     events = await fetchEventsData(destination);
-    console.log('✅ Events data fetched successfully');
   } catch (error) {
     console.warn('⚠️ Events API failed, using fallback');
     events = mockData.events[destination as keyof typeof mockData.events] || 
@@ -1214,16 +1249,12 @@ export const fetchLocationSnapshot = async (destination: string): Promise<Locati
       // Fetch attractions using OpenCage + mock data
   let attractions: AttractionInfo[] = [];
   try {
-    console.log('🏛️ Fetching attractions data...');
     attractions = await fetchAttractionsData(destination);
-    console.log('✅ Attractions data fetched successfully');
   } catch (error) {
     console.warn('⚠️ Attractions API failed, using fallback');
     attractions = mockData.attractions[destination as keyof typeof mockData.attractions] || 
                  [{ name: 'Local Attractions', type: 'Various', rating: 4.0, distance: 'Various', emoji: '🏛️' }];
   }
-  
-  console.log('🎯 Location snapshot completed successfully');
   
   const { events: _, attractions: __, ...restDefaultData } = defaultData; // Remove events and attractions from default data
   

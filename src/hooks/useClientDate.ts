@@ -2,45 +2,44 @@
 
 import { useState, useEffect } from 'react';
 
-export const useClientDate = () => {
-  const [currentDate, setCurrentDate] = useState<Date | null>(null);
+export function useClientDate() {
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
-    setCurrentDate(new Date());
+    setCurrentTime(new Date());
     
-    // Update every minute
     const interval = setInterval(() => {
-      setCurrentDate(new Date());
-    }, 60000);
-
+      setCurrentTime(new Date());
+    }, 60000); // Update every minute
+    
     return () => clearInterval(interval);
   }, []);
 
-  return { currentDate, isClient };
-};
+  return { currentTime, isClient };
+}
 
 export const useFormattedDate = (format: 'time' | 'date' | 'datetime' | 'month-year' = 'datetime') => {
-  const { currentDate, isClient } = useClientDate();
+  const { currentTime, isClient } = useClientDate();
 
-  if (!isClient || !currentDate) {
+  if (!isClient || !currentTime) {
     return { formatted: '', isClient };
   }
 
   let formatted = '';
   switch (format) {
     case 'time':
-      formatted = currentDate.toLocaleTimeString();
+      formatted = currentTime.toLocaleTimeString();
       break;
     case 'date':
-      formatted = currentDate.toLocaleDateString();
+      formatted = currentTime.toLocaleDateString();
       break;
     case 'datetime':
-      formatted = currentDate.toLocaleString();
+      formatted = currentTime.toLocaleString();
       break;
     case 'month-year':
-      formatted = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      formatted = currentTime.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
       break;
   }
 
