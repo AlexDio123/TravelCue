@@ -5,7 +5,6 @@ import SeasonCard from './SeasonCard';
 import EventsCard from './EventsCard';
 import AttractionsCard from './AttractionsCard';
 import HealthSecurityCard from './HealthSecurityCard';
-import InternetSpeedCard from './InternetSpeedCard';
 import STRAvailabilityCard from './STRAvailabilityCard';
 import { useFormattedDate } from '@/hooks/useClientDate';
 import { MapPin, Clock } from 'lucide-react';
@@ -46,9 +45,10 @@ export default function LocationSnapshotCard({ snapshot }: LocationSnapshotCardP
             security={snapshot.security} 
           />
           
-          {/* Row 3: Internet Speed, STR Availability */}
-          <InternetSpeedCard internetSpeed={snapshot.internetSpeed} />
-          <STRAvailabilityCard strAvailability={snapshot.strAvailability} />
+          {/* Row 3: STR Availability (centered) */}
+          <div className="xl:col-start-2">
+            <STRAvailabilityCard strAvailability={snapshot.strAvailability} />
+          </div>
         </div>
         
         {/* Footer */}

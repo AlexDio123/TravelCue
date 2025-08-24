@@ -50,13 +50,6 @@ const mockData = {
     'Bali, Indonesia': { status: 'safe' as const, message: 'Safe for tourists', emoji: '🛡️' },
     'Paris, France': { status: 'caution' as const, message: 'Watch for pickpockets', emoji: '⚠️', details: 'Tourist areas can be crowded' }
   },
-  internetSpeed: {
-    'Barcelona, Spain': { download: 150, upload: 50, ping: 15, status: 'fast' as const, emoji: '🚀' },
-    'Tokyo, Japan': { download: 200, upload: 100, ping: 8, status: 'fast' as const, emoji: '🚀' },
-    'New York, USA': { download: 180, upload: 80, ping: 12, status: 'fast' as const, emoji: '🚀' },
-    'Bali, Indonesia': { download: 25, upload: 10, ping: 45, status: 'moderate' as const, emoji: '📶' },
-    'Paris, France': { download: 120, upload: 40, ping: 18, status: 'fast' as const, emoji: '🚀' }
-  },
   strAvailability: {
     'Barcelona, Spain': { percentage: 85, status: 'high' as const, message: '85% booked', emoji: '🏠', averagePrice: '€120/night' },
     'Tokyo, Japan': { percentage: 70, status: 'moderate' as const, message: '70% booked', emoji: '🏠', averagePrice: '¥15,000/night' },
@@ -593,8 +586,6 @@ const getDefaultData = (destination: string) => {
                   { status: 'safe' as const, message: 'No health alerts', emoji: '✅' },
     security: mockData.security[destination as keyof typeof mockData.security] || 
               { status: 'safe' as const, message: 'Safe for tourists', emoji: '🛡️' },
-    internetSpeed: mockData.internetSpeed[destination as keyof typeof mockData.internetSpeed] || 
-                   { download: 50, upload: 20, ping: 30, status: 'moderate' as const, emoji: '📶' },
     strAvailability: mockData.strAvailability[destination as keyof typeof mockData.strAvailability] || 
                      { percentage: 60, status: 'moderate' as const, message: '60% booked', emoji: '🏠', averagePrice: 'Varies' }
   };

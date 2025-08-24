@@ -7,7 +7,6 @@ export interface LocationSnapshot {
   attractions: AttractionInfo[];
   healthAlerts: HealthAlert;
   security: SecurityInfo;
-  internetSpeed: InternetSpeed;
   strAvailability: STRAvailability;
 }
 
@@ -75,14 +74,6 @@ export interface SecurityInfo {
   message: string;
   emoji: string;
   details?: string;
-}
-
-export interface InternetSpeed {
-  download: number;
-  upload: number;
-  ping: number;
-  status: 'fast' | 'moderate' | 'slow';
-  emoji: string;
 }
 
 export interface STRAvailability {
