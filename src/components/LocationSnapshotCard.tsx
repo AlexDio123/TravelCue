@@ -2,7 +2,6 @@ import { LocationSnapshot } from '@/types';
 import TimezoneCard from './TimezoneCard';
 import CurrencyCard from './CurrencyCard';
 import SeasonCard from './SeasonCard';
-import WeatherCard from './WeatherCard';
 import EventsCard from './EventsCard';
 import AttractionsCard from './AttractionsCard';
 import HealthSecurityCard from './HealthSecurityCard';
@@ -39,16 +38,15 @@ export default function LocationSnapshotCard({ snapshot }: LocationSnapshotCardP
           <CurrencyCard currency={snapshot.currency} />
           <SeasonCard weather={snapshot.weather} />
           
-          {/* Row 2: Weather, Events, Attractions */}
-          <WeatherCard weather={snapshot.weather} />
+          {/* Row 2: Events, Attractions, Health & Security */}
           <EventsCard events={snapshot.events} />
           <AttractionsCard attractions={snapshot.attractions} />
-          
-          {/* Row 3: Health & Security, Internet Speed, STR Availability */}
           <HealthSecurityCard 
             healthAlerts={snapshot.healthAlerts} 
             security={snapshot.security} 
           />
+          
+          {/* Row 3: Internet Speed, STR Availability */}
           <InternetSpeedCard internetSpeed={snapshot.internetSpeed} />
           <STRAvailabilityCard strAvailability={snapshot.strAvailability} />
         </div>

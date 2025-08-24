@@ -64,7 +64,6 @@ src/
 │   ├── TimezoneCard.tsx         # Timezone information
 │   ├── CurrencyCard.tsx         # Currency and rates
 │   ├── SeasonCard.tsx           # Season-based travel insights
-│   ├── WeatherCard.tsx          # Weather data
 │   ├── EventsCard.tsx           # Events listing
 │   ├── AttractionsCard.tsx      # Attractions info
 │   ├── HealthSecurityCard.tsx   # Health & security
