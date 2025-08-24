@@ -23,7 +23,7 @@ export default function GlobalSearchForm({ onSearch, isLoading = false }: Global
   const [suggestions, setSuggestions] = useState<Destination[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
   // Handle search input changes
@@ -156,7 +156,7 @@ export default function GlobalSearchForm({ onSearch, isLoading = false }: Global
       {/* No results message */}
       {showSuggestions && query.trim().length >= 2 && !isSearching && suggestions.length === 0 && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50 p-4 text-center text-gray-500">
-          No se encontraron destinos para "{query}"
+          No se encontraron destinos para &quot;{query}&quot;
         </div>
       )}
     </div>

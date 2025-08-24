@@ -94,7 +94,7 @@ export const searchGlobalDestination = async (query: string): Promise<Array<{nam
     console.log('🌍 OpenCage Response Data:', response.data);
     
     if (response.data && response.data.results && Array.isArray(response.data.results)) {
-      const destinations = response.data.results.map((result: any) => {
+      const destinations = response.data.results.map((result: { components: { city?: string; town?: string; village?: string; county?: string; country?: string }; geometry?: { lat: number; lng: number } }) => {
         const components = result.components;
         const coordinates = {
           lat: result.geometry?.lat || 0,
@@ -120,16 +120,17 @@ export const searchGlobalDestination = async (query: string): Promise<Array<{nam
     console.log('⚠️ OpenCage response structure unexpected:', response.data);
     return [];
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ OpenCage API failed:', error);
     
-    if (error.response) {
+    if (error && typeof error === 'object' && 'response' in error) {
+      const apiError = error as { response: { status: number; statusText: string; data: unknown }; config?: { url?: string; params?: unknown } };
       console.error('❌ OpenCage Error Details:', {
-        status: error.response.status,
-        statusText: error.response.statusText,
-        data: error.response.data,
-        url: error.config?.url,
-        params: error.config?.params
+        status: apiError.response.status,
+        statusText: apiError.response.statusText,
+        data: apiError.response.data,
+        url: apiError.config?.url,
+        params: apiError.config?.params
       });
     }
     
@@ -181,8 +182,9 @@ export const fetchAttractionsData = async (destination: string, coordinates?: {l
           locationContext = result.formatted || destination;
           console.log('🏛️ Location context from OpenCage:', locationContext);
         }
-      } catch (reverseError: any) {
-        console.log('⚠️ Reverse geocoding for attractions failed:', reverseError.message);
+      } catch (reverseError: unknown) {
+        const errorMessage = reverseError instanceof Error ? reverseError.message : 'Unknown error';
+        console.log('⚠️ Reverse geocoding for attractions failed:', errorMessage);
         locationContext = destination;
       }
     } else {
@@ -201,7 +203,7 @@ export const fetchAttractionsData = async (destination: string, coordinates?: {l
     console.log(`✅ Generated ${mockAttractions.length} mock attractions for: ${locationContext}`);
     return mockAttractions;
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.warn('⚠️ Attractions generation failed, using basic fallback:', error);
     
     // Basic fallback attractions
@@ -270,7 +272,7 @@ export const fetchEventsData = async (destination: string): Promise<EventInfo[]>
     console.log('✅ PredictHQ API response:', data);
     
     if (data.results && Array.isArray(data.results) && data.results.length > 0) {
-      const events = data.results.map((event: any) => {
+      const events = data.results.map((event: { category?: string; title?: string; start?: string; place?: { name?: string }; venue?: { name?: string }; id: string; cover_image?: string; image?: string }) => {
         // Determine event type based on category
         let eventType: 'music' | 'sports' | 'cultural' | 'other' = 'other';
         let emoji = '📅';
@@ -322,17 +324,18 @@ export const fetchEventsData = async (destination: string): Promise<EventInfo[]>
     console.log('⚠️ No events found from PredictHQ, using fallback');
     return generateFallbackEvents(city);
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.warn('⚠️ PredictHQ API failed, using fallback events:', error);
     
     // Log specific error details for debugging
-    if (error.response) {
+    if (error && typeof error === 'object' && 'response' in error) {
+      const apiError = error as { response: { status: number; statusText: string; data: unknown }; config?: { url?: string; params?: unknown } };
       console.error('❌ PredictHQ API Error Details:', {
-        status: error.response.status,
-        statusText: error.response.statusText,
-        data: error.response.data,
-        url: error.config?.url,
-        params: error.config?.params
+        status: apiError.response.status,
+        statusText: apiError.response.statusText,
+        data: apiError.response.data,
+        url: apiError.config?.url,
+        params: apiError.config?.params
       });
     }
     
@@ -868,8 +871,9 @@ export const detectCountryFromDestination = async (destination: string): Promise
       
       console.log('⚠️ OpenCage API failed to detect country, trying fallback...');
       
-    } catch (opencageError: any) {
-      console.log('⚠️ OpenCage API failed, trying fallback detection:', opencageError.message);
+    } catch (opencageError: unknown) {
+      const errorMessage = opencageError instanceof Error ? opencageError.message : 'Unknown error';
+      console.log('⚠️ OpenCage API failed, trying fallback detection:', errorMessage);
     }
     
     // Fallback: try OpenCage global search if direct geocoding failed
@@ -909,13 +913,15 @@ export const detectCountryFromDestination = async (destination: string): Promise
                 return country;
               }
             }
-          } catch (reverseError: any) {
-            console.log('⚠️ Reverse geocoding failed:', reverseError.message);
+          } catch (reverseError: unknown) {
+            const errorMessage = reverseError instanceof Error ? reverseError.message : 'Unknown error';
+            console.log('⚠️ Reverse geocoding failed:', errorMessage);
           }
         }
       }
-    } catch (opencageError: any) {
-      console.log('⚠️ OpenCage global search also failed:', opencageError.message);
+    } catch (opencageError: unknown) {
+      const errorMessage = opencageError instanceof Error ? opencageError.message : 'Unknown error';
+      console.log('⚠️ OpenCage global search also failed:', errorMessage);
     }
     
     // Fallback: try to extract country from destination string
