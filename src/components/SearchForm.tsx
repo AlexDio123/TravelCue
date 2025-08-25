@@ -115,7 +115,7 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
             onChange={(e) => handleInputChange(e.target.value)}
             onFocus={() => setShowSuggestions(true)}
             placeholder="Enter destination (e.g., Barcelona, Spain)"
-            className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors"
+            className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors text-gray-900 placeholder-gray-400 disabled:text-gray-400 disabled:bg-gray-50"
             disabled={isLoading}
           />
           <button
@@ -135,7 +135,7 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
         {showSuggestions && destination && (
           <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
             {isSearching ? (
-              <div className="flex items-center justify-center px-4 py-3 text-gray-500">
+              <div className="flex items-center justify-center px-4 py-3 text-gray-600">
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
                 Searching...
               </div>
@@ -149,12 +149,12 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
                 >
                   <div className="flex items-center gap-3">
                     <MapPin className="w-4 h-4 text-blue-600" />
-                    <span className="text-gray-800">{suggestion.name}, {suggestion.country}</span>
+                    <span className="text-gray-900 font-medium">{suggestion.name}, {suggestion.country}</span>
                   </div>
                 </button>
               ))
             ) : destination.length >= 2 ? (
-              <div className="px-4 py-3 text-gray-500 text-center">
+              <div className="px-4 py-3 text-gray-600 text-center">
                 No destinations found
               </div>
             ) : null}
@@ -164,7 +164,7 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
 
       {/* Quick Popular Destinations (still useful for inspiration) */}
       <div className="mt-6">
-        <p className="text-center text-gray-600 mb-3">Popular destinations:</p>
+        <p className="text-center text-gray-700 mb-3 font-medium">Popular destinations:</p>
         <div className="flex flex-wrap justify-center gap-2">
           {['Barcelona, Spain', 'Tokyo, Japan', 'New York, USA', 'Bali, Indonesia', 'Paris, France'].map((suggestion, index) => (
             <button
@@ -173,7 +173,7 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
                 setDestination(suggestion);
                 onSearch(suggestion);
               }}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full text-sm transition-colors"
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-full text-sm transition-colors font-medium"
             >
               {suggestion}
             </button>
