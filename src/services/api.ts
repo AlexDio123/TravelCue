@@ -37,13 +37,7 @@ const mockData = {
       { name: 'Times Square', type: 'Landmark', rating: 4.4, distance: '0.2 km', emoji: '🌆' }
     ]
   },
-  strAvailability: {
-    'Barcelona, Spain': { percentage: 85, status: 'high' as const, message: '85% booked', emoji: '🏠', averagePrice: '€120/night' },
-    'Tokyo, Japan': { percentage: 70, status: 'moderate' as const, message: '70% booked', emoji: '🏠', averagePrice: '¥15,000/night' },
-    'New York, USA': { percentage: 90, status: 'high' as const, message: '90% booked', emoji: '🏠', averagePrice: '$200/night' },
-    'Bali, Indonesia': { percentage: 45, status: 'low' as const, message: '45% booked', emoji: '🏠', averagePrice: 'Rp 800,000/night' },
-    'Paris, France': { percentage: 80, status: 'high' as const, message: '80% booked', emoji: '🏠', averagePrice: '€150/night' }
-  }
+
 };
 
 // Global destination search using OpenCage Geocoding API
@@ -479,8 +473,7 @@ const getDefaultData = (destination: string) => {
             [{ name: 'Local Events', type: 'cultural' as const, date: 'Check local calendar', emoji: '📅' }],
     attractions: mockData.attractions[destination as keyof typeof mockData.attractions] || 
                  [{ name: 'Local Attractions', type: 'Various', rating: 4.0, distance: 'Various', emoji: '🏛️' }],
-    strAvailability: mockData.strAvailability[destination as keyof typeof mockData.strAvailability] || 
-                     { percentage: 60, status: 'moderate' as const, message: '60% booked', emoji: '🏠', averagePrice: 'Varies' }
+
   };
 };
 
@@ -1335,6 +1328,163 @@ export const fetchWeatherData = async (destination: string): Promise<WeatherInfo
   }
 };
 
+
+
+              };
+            });
+          
+          // Calculate availability based on accommodation density
+          let percentage: number;
+          let status: 'high' | 'moderate' | 'low';
+          let message: string;
+          let emoji: string;
+          
+          if (accommodationCount >= 20) {
+            percentage = 30; // Low booking rate due to many options
+            status = 'low';
+            message = `${accommodationCount} accommodation options available`;
+            emoji = '🏠';
+          } else if (accommodationCount >= 10) {
+            percentage = 60; // Moderate booking rate
+            status = 'moderate';
+            message = `${accommodationCount} accommodation options available`;
+            emoji = '🏠';
+          } else {
+            percentage = 80; // High booking rate due to few options
+            status = 'high';
+            message = `${accommodationCount} accommodation options available`;
+            emoji = '🏠';
+          }
+          
+          console.log('🏠 Returning accommodation data with options:', {
+            percentage,
+            status,
+            message,
+            emoji,
+            averagePrice: accommodationCount >= 15 ? 'Competitive rates' : 'Varies by location',
+            optionsCount: accommodationOptions.length,
+            options: accommodationOptions
+          });
+          
+          const result = {
+            percentage,
+            status,
+            message,
+            emoji,
+            averagePrice: accommodationCount >= 15 ? 'Competitive rates' : 'Varies by location',
+            options: accommodationOptions
+          };
+          
+          console.log('🏠 Returning OpenStreetMap data with options:', result);
+          return result;
+        }
+      }
+    } catch (overpassError) {
+      console.log('⚠️ OpenStreetMap Overpass API failed for STR data:', overpassError);
+      if (overpassError instanceof Error) {
+        console.log('⚠️ Error details:', {
+          name: overpassError.name,
+          message: overpassError.message,
+          stack: overpassError.stack
+        });
+      }
+    }
+    
+    // Fallback: Generate intelligent availability based on destination type
+    const destinationLower = destination.toLowerCase();
+    
+    let fallbackData: STRAvailability;
+    
+    if (destinationLower.includes('major city') || destinationLower.includes('capital') || destinationLower.includes('new york') || destinationLower.includes('london') || destinationLower.includes('tokyo')) {
+      fallbackData = {
+        percentage: 75,
+        status: 'high' as const,
+        message: 'High demand in major city',
+        emoji: '🏠',
+        averagePrice: 'Premium rates',
+        options: [
+          {
+            name: 'Sample Hotel',
+            type: 'hotel' as const,
+            distance: '1km',
+            emoji: '🏨',
+            rating: 4
+          },
+          {
+            name: 'Local Hostel',
+            type: 'hostel' as const,
+            distance: '2km',
+            emoji: '🛏️',
+            rating: 4
+          }
+        ]
+      };
+    } else if (destinationLower.includes('beach') || destinationLower.includes('resort') || destinationLower.includes('bali') || destinationLower.includes('maldives')) {
+      fallbackData = {
+        percentage: 85,
+        status: 'high' as const,
+        message: 'High demand in tourist destination',
+        emoji: '🏖️',
+        averagePrice: 'Resort rates',
+        options: [
+          {
+            name: 'Beach Resort',
+            type: 'hotel' as const,
+            distance: '1km',
+            emoji: '🏖️',
+            rating: 5
+          },
+          {
+            name: 'Ocean View Hotel',
+            type: 'hotel' as const,
+            distance: '2km',
+            emoji: '🌊',
+            rating: 4
+          }
+        ]
+      };
+    } else {
+      fallbackData = {
+        percentage: 60,
+        status: 'moderate' as const,
+        message: 'Moderate availability',
+        emoji: '🏠',
+        averagePrice: 'Varies by location',
+        options: [
+          {
+            name: 'Local Hotel',
+            type: 'hotel' as const,
+            distance: '1km',
+            emoji: '🏨',
+            rating: 4
+          },
+          {
+            name: 'Guest House',
+            type: 'guest_house' as const,
+            distance: '2km',
+            emoji: '🏡',
+            rating: 4
+          }
+        ]
+      };
+    }
+    
+    console.log('🏠 Returning fallback data with options:', fallbackData);
+    
+    return fallbackData;
+    
+  } catch (error) {
+    console.warn('⚠️ STR Availability generation failed:', error);
+    return {
+      percentage: 60,
+      status: 'moderate',
+      message: 'Availability data unavailable',
+      emoji: '🏠',
+      averagePrice: 'Check local sites'
+    };
+  }
+};
+
 // Fetch complete location snapshot with robust error handling
 export const fetchLocationSnapshot = async (destination: string): Promise<LocationSnapshot> => {
   
@@ -1444,7 +1594,7 @@ export const fetchLocationSnapshot = async (destination: string): Promise<Locati
     console.warn('⚠️ Security API failed, using fallback');
   }
   
-  const { events: _, attractions: __, strAvailability: ____, ...restDefaultData } = defaultData; // Remove events, attractions, strAvailability from default data
+  const { events: _, attractions: __, ...restDefaultData } = defaultData; // Remove events, attractions from default data
   
   return {
     destination,
@@ -1455,8 +1605,6 @@ export const fetchLocationSnapshot = async (destination: string): Promise<Locati
     attractions, // Use attractions generated with OpenCage context
     health,
     security,
-    strAvailability: mockData.strAvailability[destination as keyof typeof mockData.strAvailability] || 
-                     { percentage: 60, status: 'moderate' as const, message: '60% booked', emoji: '🏠', averagePrice: 'Varies' },
     ...restDefaultData
   };
 };

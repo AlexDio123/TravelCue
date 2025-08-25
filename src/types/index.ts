@@ -82,4 +82,13 @@ export interface STRAvailability {
   message: string;
   emoji: string;
   averagePrice?: string;
+  options?: AccommodationOption[];
+}
+
+export interface AccommodationOption {
+  name: string;
+  type: 'hotel' | 'hostel' | 'guest_house' | 'apartment' | 'other';
+  distance: string;
+  emoji: string;
+  rating?: number;
 }

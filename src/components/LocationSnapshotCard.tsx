@@ -47,7 +47,7 @@ export default function LocationSnapshotCard({ snapshot }: LocationSnapshotCardP
           
           {/* Row 3: STR Availability (centered) */}
           <div className="xl:col-start-2">
-            <STRAvailabilityCard strAvailability={snapshot.strAvailability} />
+            <STRAvailabilityCard destination={snapshot.destination} />
           </div>
         </div>
         
