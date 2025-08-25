@@ -304,25 +304,40 @@ function parseStateDeptCountryInfo($: cheerio.Root, countrySlug: string) {
     // Look for specific Level patterns in the HTML content
     const html = $.html();
     
-    // Enhanced level detection patterns
+    // Enhanced level detection patterns with priority ordering
+    // Level 2 and 1 should be checked BEFORE Level 4 to avoid false positives
     const levelPatterns = [
-      { pattern: /level\s*4[:\s]*do\s*not\s*travel/i, level: '4', description: 'Do not travel' },
-      { pattern: /level\s*3[:\s]*reconsider\s*travel/i, level: '3', description: 'Reconsider travel' },
-      { pattern: /level\s*2[:\s]*exercise\s*increased\s*caution/i, level: '2', description: 'Exercise increased caution' },
-      { pattern: /level\s*1[:\s]*exercise\s*normal\s*precautions/i, level: '1', description: 'Exercise normal precautions' },
-      // Alternative patterns
-      { pattern: /level\s*4\s*-\s*do\s*not\s*travel/i, level: '4', description: 'Do not travel' },
-      { pattern: /level\s*3\s*-\s*reconsider\s*travel/i, level: '3', description: 'Reconsider travel' },
-      { pattern: /level\s*2\s*-\s*exercise\s*increased\s*caution/i, level: '2', description: 'Exercise increased caution' },
-      { pattern: /level\s*1\s*-\s*exercise\s*normal\s*precautions/i, level: '1', description: 'Exercise normal precautions' }
+      // Higher priority: Specific Level 2 patterns (check first)
+      { pattern: /level\s*2[:\s]*exercise\s*increased\s*caution/i, level: '2', description: 'Exercise increased caution', priority: 1 },
+      { pattern: /level\s*2\s*-\s*exercise\s*increased\s*caution/i, level: '2', description: 'Exercise increased caution', priority: 1 },
+      
+      // Higher priority: Specific Level 1 patterns
+      { pattern: /level\s*1[:\s]*exercise\s*normal\s*precautions/i, level: '1', description: 'Exercise normal precautions', priority: 1 },
+      { pattern: /level\s*1\s*-\s*exercise\s*normal\s*precautions/i, level: '1', description: 'Exercise normal precautions', priority: 1 },
+      
+      // Higher priority: Specific Level 3 patterns
+      { pattern: /level\s*3[:\s]*reconsider\s*travel/i, level: '3', description: 'Reconsider travel', priority: 2 },
+      { pattern: /level\s*3\s*-\s*reconsider\s*travel/i, level: '3', description: 'Reconsider travel', priority: 2 },
+      
+      // Lower priority: Level 4 patterns (check last to avoid false positives)
+      { pattern: /level\s*4[:\s]*do\s*not\s*travel/i, level: '4', description: 'Do not travel', priority: 3 },
+      { pattern: /level\s*4\s*-\s*do\s*not\s*travel/i, level: '4', description: 'Do not travel', priority: 3 }
     ];
     
     let foundLevel = null;
+    let highestPriority = 0;
+    
+    // Find the highest priority pattern that matches
     for (const pattern of levelPatterns) {
       if (pattern.pattern.test(html)) {
-        foundLevel = pattern;
-        console.log(`✅ Found exact Level ${pattern.level} match: ${pattern.description}`);
-        break;
+        // If this pattern has higher priority (lower number), use it
+        if (foundLevel === null || pattern.priority < foundLevel.priority) {
+          foundLevel = pattern;
+          highestPriority = pattern.priority;
+          console.log(`✅ Found Level ${pattern.level} match (priority ${pattern.priority}): ${pattern.description}`);
+        } else {
+          console.log(`⚠️ Found Level ${pattern.level} match but keeping higher priority Level ${foundLevel.level}`);
+        }
       }
     }
     
@@ -344,32 +359,40 @@ function parseStateDeptCountryInfo($: cheerio.Root, countrySlug: string) {
     // If no level found, try to infer from content context
     console.log(`⚠️ No explicit level found, checking content context...`);
     
-    if (html.toLowerCase().includes('do not travel') || html.toLowerCase().includes('level 4')) {
-      console.log(`✅ Inferred Level 4 from content context`);
+    // More specific context checking to avoid false positives
+    const lowerHtml = html.toLowerCase();
+    
+    // Check for Level 4 with more specific context
+    if ((lowerHtml.includes('level 4') && lowerHtml.includes('do not travel')) || 
+        (lowerHtml.includes('do not travel') && lowerHtml.includes('level 4'))) {
+      console.log(`✅ Inferred Level 4 from specific context`);
       return {
         status: 'alert',
         message: 'Level 4: Do not travel',
         emoji: '🚫',
         details: 'Level 4: Do not travel - Source: State Department Country Info Page'
       };
-    } else if (html.toLowerCase().includes('reconsider travel') || html.toLowerCase().includes('level 3')) {
-      console.log(`✅ Inferred Level 3 from content context`);
+    } else if ((lowerHtml.includes('level 3') && lowerHtml.includes('reconsider travel')) || 
+               (lowerHtml.includes('reconsider travel') && lowerHtml.includes('level 3'))) {
+      console.log(`✅ Inferred Level 3 from specific context`);
       return {
         status: 'warning',
         message: 'Level 3: Reconsider travel',
         emoji: '🚨',
         details: 'Level 3: Reconsider travel - Source: State Department Country Info Page'
       };
-    } else if (html.toLowerCase().includes('increased caution') || html.toLowerCase().includes('level 2')) {
-      console.log(`✅ Inferred Level 2 from content context`);
+    } else if ((lowerHtml.includes('level 2') && lowerHtml.includes('increased caution')) || 
+               (lowerHtml.includes('increased caution') && lowerHtml.includes('level 2'))) {
+      console.log(`✅ Inferred Level 2 from specific context`);
       return {
         status: 'caution',
         message: 'Level 2: Exercise increased caution',
         emoji: '⚠️',
         details: 'Level 2: Exercise increased caution - Source: State Department Country Info Page'
       };
-    } else if (html.toLowerCase().includes('normal precautions') || html.toLowerCase().includes('level 1')) {
-      console.log(`✅ Inferred Level 1 from content context`);
+    } else if ((lowerHtml.includes('level 1') && lowerHtml.includes('normal precautions')) || 
+               (lowerHtml.includes('normal precautions') && lowerHtml.includes('level 1'))) {
+      console.log(`✅ Inferred Level 1 from specific context`);
       return {
         status: 'safe',
         message: 'Level 1: Exercise normal precautions',
@@ -377,6 +400,13 @@ function parseStateDeptCountryInfo($: cheerio.Root, countrySlug: string) {
         details: 'Level 1: Exercise normal precautions - Source: State Department Country Info Page'
       };
     }
+    
+    // If still no level found, log the content for debugging
+    console.log(`⚠️ No level could be inferred from content context`);
+    console.log(`🔍 HTML contains 'do not travel': ${lowerHtml.includes('do not travel')}`);
+    console.log(`🔍 HTML contains 'level 4': ${lowerHtml.includes('level 4')}`);
+    console.log(`🔍 HTML contains 'increased caution': ${lowerHtml.includes('increased caution')}`);
+    console.log(`🔍 HTML contains 'level 2': ${lowerHtml.includes('level 2')}`);
     
     console.log(`⚠️ No level could be determined from content context`);
     return null;
