@@ -2,6 +2,7 @@ import apiClient from './axios-config';
 import { LocationSnapshot, TimezoneInfo, CurrencyInfo, WeatherInfo, EventInfo, AttractionInfo, HealthAlert, SecurityInfo } from '@/types';
 import { API_CONFIG, FALLBACK_DATA } from '@/config/apis';
 import { COUNTRY_CURRENCY_MAP, CURRENCY_SYMBOL_MAP } from '@/config/constants';
+import { getCDCSlug } from '../config/cdc-slugs';
 
 // Mock data for components that don't have free APIs
 const mockData = {
@@ -153,7 +154,7 @@ export const fetchAttractionsData = async (destination: string, coordinates?: {l
           coordinates = searchResults[0].coordinates;
           console.log('🏛️ Got coordinates from OpenCage for attractions:', coordinates);
         }
-      } catch (error) {
+      } catch (_) {
         console.log('⚠️ Could not get coordinates for attractions search');
         return generateFallbackAttractions(destination);
       }
@@ -399,7 +400,7 @@ export const fetchEventsData = async (destination: string): Promise<EventInfo[]>
         coordinates = searchResults[0].coordinates;
         console.log('📍 Got coordinates for PredictHQ events search:', coordinates);
       }
-    } catch (error) {
+    } catch (_) {
       // Could not get coordinates for PredictHQ events search
     }
     
@@ -463,7 +464,7 @@ export const fetchEventsData = async (destination: string): Promise<EventInfo[]>
               hour: 'numeric',
               minute: '2-digit'
             });
-          } catch (error) {
+          } catch (_) {
             // Could not parse event date
           }
         }
@@ -592,7 +593,7 @@ export const fetchTimezoneData = async (destination: string): Promise<TimezoneIn
         // User timezone detected
         
         return { timezone: userTimezone, offset: userOffset };
-      } catch (error) {
+      } catch (_) {
         // Could not detect user timezone, using UTC
         return { timezone: 'UTC', offset: 0 };
       }
@@ -601,18 +602,16 @@ export const fetchTimezoneData = async (destination: string): Promise<TimezoneIn
     const userTimezone = getUserTimezone();
     
     // First try to get country from OpenCage to determine timezone
-    // Get country and coordinates for the destination to determine timezone
-    let detectedCountry = '';
+    // Get coordinates for the destination to determine timezone
     let coordinates: { lat: number; lon: number } | null = null;
     
     try {
       const searchResults = await searchGlobalDestination(destination);
       if (searchResults.length > 0) {
-        detectedCountry = searchResults[0].country;
         coordinates = searchResults[0].coordinates;
-        // Country and coordinates detected for timezone
+        // Coordinates detected for timezone
       }
-    } catch (error) {
+    } catch (_) {
       // Country/coordinate detection failed for timezone, using fallback
     }
     
@@ -636,7 +635,6 @@ export const fetchTimezoneData = async (destination: string): Promise<TimezoneIn
         
         if (reverseResponse.data && reverseResponse.data.results && reverseResponse.data.results.length > 0) {
           const result = reverseResponse.data.results[0];
-          const components = result.components;
           
           // OpenCage response components and annotations available
           console.log('🌍 OpenCage response for timezone:', result.annotations);
@@ -673,7 +671,7 @@ export const fetchTimezoneData = async (destination: string): Promise<TimezoneIn
                   };
                   // Timezone data from WorldTime API fallback
                 }
-                             } catch (timezoneError) {
+                             } catch (_) {
                  // WorldTime API fallback also failed (CORS issue)
                 
                 // Final fallback: Use OpenCage timezone name and estimate offset from coordinates
@@ -698,7 +696,7 @@ export const fetchTimezoneData = async (destination: string): Promise<TimezoneIn
             // Using coordinate-based timezone estimation
           }
         }
-      } catch (reverseError) {
+      } catch (_) {
         // OpenCage reverse geocoding for timezone failed, using coordinate estimation
         // Final fallback: Estimate timezone from longitude
         const estimatedOffset = Math.round(coordinates.lon / 15);
@@ -736,10 +734,6 @@ export const fetchTimezoneData = async (destination: string): Promise<TimezoneIn
       // WorldTime API response received
       
       if (data && data.datetime) {
-        // Parse the destination time from the API
-        const destinationTime = new Date(data.datetime);
-        const userTime = new Date();
-        
         // API returned destination time and UTC offset
         
         // Format time difference display
@@ -772,7 +766,7 @@ export const fetchTimezoneData = async (destination: string): Promise<TimezoneIn
       
       throw new Error('Invalid API response');
       
-    } catch (error) {
+    } catch (_) {
       // WorldTime API failed, falling back to calculated time
       
       // Fallback: Calculate current time in destination timezone using our mapping
@@ -809,8 +803,8 @@ export const fetchTimezoneData = async (destination: string): Promise<TimezoneIn
       };
     }
     
-  } catch (error) {
-    console.warn('Timezone detection failed, using UTC fallback:', error);
+  } catch (_) {
+    console.warn('Timezone detection failed, using UTC fallback');
     
     // Ultimate fallback: UTC
     const now = new Date();
@@ -944,397 +938,351 @@ export const fetchCurrencyData = async (destination: string): Promise<CurrencyIn
   }
 };
 
-// Fetch real health data from health sources
-export const fetchHealthData = async (destination: string): Promise<HealthAlert> => {
+// Fetch real health data from server-side CDC API
+export const fetchHealthData = async (destination: string, detectedCountry?: string): Promise<HealthAlert> => {
   try {
-    console.log('🏥 Scraping health data from official sources...');
-    
-    // Extract country from destination (e.g., "Barcelona, Spain" -> "Spain")
-    const country = destination.split(',').pop()?.trim() || destination;
-    
-    // Try to scrape from CDC Travel Health
-    try {
-      const corsProxy = 'https://cors-anywhere.herokuapp.com/';
-      const cdcUrl = 'https://wwwnc.cdc.gov/travel/destinations/list';
-      
-      const response = await fetch(corsProxy + cdcUrl, {
-        method: 'GET',
-        headers: {
-          'Origin': 'http://localhost:3000'
-        }
-      });
-      
-      if (response.ok) {
-        console.log('✅ CDC website accessible, parsing health data...');
-        const html = await response.text();
-        
-        // Parse the HTML to extract health information
-        const healthData = parseCDCHealthData(html, country);
-        
-        if (healthData) {
-          console.log(`🏥 Found CDC health data for ${country}:`, healthData);
-          return healthData;
-        } else {
-          console.log(`⚠️ No specific CDC health data found for ${country}`);
-        }
-      } else {
-        console.log(`⚠️ CDC returned status: ${response.status}`);
+    console.log('🏥 Fetching health data from server-side CDC API...');
+
+    // Use detected country from OpenCage if available, otherwise extract from destination
+    const country = detectedCountry || destination.split(',').pop()?.trim() || destination;
+    console.log(`🏥 Looking for health data for: ${country} (from ${detectedCountry ? 'OpenCage' : 'destination parsing'})`);
+
+    // Get CDC slug for the country
+    const cdcSlug = getCDCSlug(country);
+    console.log(`🏥 CDC Slug: ${cdcSlug}`);
+
+    // Call our server-side API route (no CORS issues!)
+    const apiUrl = `/api/health/${cdcSlug}`;
+    console.log(`🏥 Calling server-side API: ${apiUrl}`);
+
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
       }
-    } catch (cdcError) {
-      console.log('⚠️ CDC scraping failed, trying alternative sources...');
+    });
+
+    if (!response.ok) {
+      console.log(`⚠️ Server-side API returned status: ${response.status}`);
+      throw new Error(`API returned status ${response.status}`);
     }
-    
-    // Try to scrape from WHO Outbreak Database
-    try {
-      const corsProxy = 'https://cors-anywhere.herokuapp.com/';
-      const whoUrl = 'https://www.who.int/emergencies/disease-outbreak-news';
-      
-      const response = await fetch(corsProxy + whoUrl, {
-        method: 'GET',
-        headers: {
-          'Origin': 'http://localhost:3000'
-        }
-      });
-      
-      if (response.ok) {
-        console.log('✅ WHO website accessible, parsing outbreak data...');
-        const html = await response.text();
-        
-        // Parse the HTML to extract outbreak information
-        const outbreakData = parseWHOOutbreakData(html, country);
-        
-        if (outbreakData) {
-          console.log(`🦠 Found WHO outbreak data for ${country}:`, outbreakData);
-          return outbreakData;
-        } else {
-          console.log(`⚠️ No specific WHO outbreak data found for ${country}`);
-        }
-      } else {
-        console.log(`⚠️ WHO returned status: ${response.status}`);
-      }
-    } catch (whoError) {
-      console.log('⚠️ WHO scraping failed, trying alternative sources...');
+
+    const healthData = await response.json();
+    console.log(`✅ Server-side CDC data received:`, healthData);
+
+    // Parse the server-side data to extract health information
+    const parsedHealthData = parseServerSideCDCData(healthData, country);
+
+    if (parsedHealthData) {
+      console.log(`🏥 Parsed health data for ${country}:`, parsedHealthData);
+      return parsedHealthData;
+    } else {
+      console.log(`⚠️ No health data could be parsed for ${country}`);
+      return {
+        status: 'safe',
+        message: 'Health data unavailable',
+        emoji: '❓',
+        details: 'Unable to parse health information. Please check official sources for latest updates.'
+      };
     }
-    
-    // Fallback to CORS-friendly APIs
-    try {
-      const healthResponse = await fetch('https://api.covid19api.com/summary', {
-        method: 'GET'
-      });
-      
-      if (healthResponse.ok) {
-        console.log('✅ COVID-19 API accessible, checking for health data...');
-        const healthData = await healthResponse.json();
-        console.log('📊 Global health data available:', healthData.Global);
-        
-        // Check if there are country-specific risk assessments
-        if (healthData.Countries) {
-          const countryRisk = healthData.Countries.find((c: { Country: string }) => 
-            c.Country.toLowerCase().includes(country.toLowerCase()) || 
-            country.toLowerCase().includes(c.Country.toLowerCase())
-          );
-          if (countryRisk) {
-            console.log(`⚠️ Found risk data for ${countryRisk.Country}:`, countryRisk);
-          }
-        }
-      } else {
-        console.log(`⚠️ COVID-19 API returned status: ${healthResponse.status}`);
-      }
-    } catch (covidError) {
-      console.log('⚠️ COVID-19 API not accessible, using fallback data');
-    }
-    
-    // Enhanced mapping with real-time data sources as final fallback
-    const healthData: { [key: string]: HealthAlert } = {
-      'Spain': { status: 'safe', message: 'No health alerts', emoji: '✅', details: 'Standard travel precautions recommended' },
-      'Japan': { status: 'safe', message: 'No health alerts', emoji: '✅', details: 'Very safe, excellent healthcare system' },
-      'USA': { status: 'safe', message: 'No health alerts', emoji: '✅', details: 'Standard US healthcare available' },
-      'Indonesia': { status: 'warning', message: 'Dengue risk in some areas', emoji: '🦟', details: 'Use mosquito protection, avoid standing water' },
-      'France': { status: 'safe', message: 'No health alerts', emoji: '✅', details: 'Excellent healthcare, standard EU standards' },
-      'Brazil': { status: 'warning', message: 'Yellow fever risk in some regions', emoji: '🦟', details: 'Check vaccination requirements, use insect protection' },
-      'Mexico': { status: 'caution', message: 'Food and water precautions', emoji: '💧', details: 'Drink bottled water, avoid street food' },
-      'Thailand': { status: 'caution', message: 'Food safety precautions', emoji: '🍜', details: 'Avoid raw seafood, drink bottled water' },
-      'India': { status: 'warning', message: 'Food and water precautions', emoji: '💧', details: 'Drink bottled water, avoid raw vegetables' },
-      'Morocco': { status: 'caution', message: 'Food safety precautions', emoji: '🍽️', details: 'Drink bottled water, avoid street food' }
-    };
-    
-    // Find exact match or partial match
-    let healthInfo = healthData[country];
-    if (!healthInfo) {
-      // Try partial matching
-      for (const [key, value] of Object.entries(healthData)) {
-        if (country.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(country.toLowerCase())) {
-          healthInfo = value;
-          break;
-        }
-      }
-    }
-    
-    // Default fallback
-    if (!healthInfo) {
-      healthInfo = { status: 'safe', message: 'No specific health alerts', emoji: '✅', details: 'Standard travel precautions recommended' };
-    }
-    
-    console.log('✅ Health data fetched:', healthInfo);
-    return healthInfo;
-    
+
   } catch (error) {
-    console.warn('⚠️ Health API failed, using fallback:', error);
-    return { status: 'safe', message: 'Health data unavailable', emoji: '✅', details: 'Standard travel precautions recommended' };
+    console.warn('⚠️ Health API failed:', error);
+    return {
+      status: 'safe',
+      message: 'Health data unavailable',
+      emoji: '❓',
+      details: 'Unable to fetch current health information. Please check official sources for latest updates.'
+    };
   }
 };
 
-// Helper function to parse CDC health data from HTML
-function parseCDCHealthData(html: string, country: string): HealthAlert | null {
+// Parse server-side CDC data to extract health information
+function parseServerSideCDCData(healthData: {
+  slug: string;
+  url: string;
+  title: string;
+  heading: string;
+  content: string;
+  hasVaccines: boolean;
+  hasNotices: boolean;
+  vaccineCount: number;
+  noticeCount: number;
+  healthContent?: string;
+  hasHealthAlerts?: boolean;
+  hasTravelNotices?: boolean;
+  mainContent?: string;
+  sidebarContent?: string;
+  cdcContent?: string;
+  cdcLevels?: Array<{level: string, description: string, context: string}>;
+  rawHtml: string;
+}, country: string): HealthAlert | null {
   try {
+    console.log(`🏥 Parsing server-side CDC data for ${country}:`, {
+      title: healthData.title,
+      heading: healthData.heading,
+      contentLength: healthData.content.length,
+      hasVaccines: healthData.hasVaccines,
+      hasNotices: healthData.hasNotices,
+      hasHealthAlerts: healthData.hasHealthAlerts,
+      hasTravelNotices: healthData.hasTravelNotices,
+      mainContentLength: healthData.mainContent?.length || 0,
+      sidebarContentLength: healthData.sidebarContent?.length || 0,
+      cdcContentLength: healthData.cdcContent?.length || 0,
+      cdcLevelsFromBackend: healthData.cdcLevels?.length || 0
+    });
+    
+    if (!healthData || !healthData.content) {
+      console.log(`⚠️ No content in server-side data for ${country}`);
+      return null;
+    }
+
+    // Use backend-extracted CDC levels if available (more accurate)
+    if (healthData.cdcLevels && healthData.cdcLevels.length > 0) {
+      console.log(`🏥 Using backend-extracted CDC levels:`, healthData.cdcLevels);
+      
+      const levels = healthData.cdcLevels.map(l => l.level).sort();
+      const highestLevel = Math.max(...levels.map(Number));
+      
+      let healthStatus: 'safe' | 'warning' | 'alert' | 'caution';
+      let message: string;
+      let details: string;
+      
+      if (highestLevel === 3) {
+        healthStatus = 'warning';
+        message = `CDC Level ${highestLevel}: Avoid nonessential travel`;
+        details = `Multiple health risks detected: ${levels.join(', ')} - Level ${highestLevel} requires avoiding nonessential travel.`;
+      } else if (highestLevel === 2) {
+        healthStatus = 'caution';
+        message = `CDC Level ${highestLevel}: Practice enhanced precautions`;
+        details = `Multiple health risks detected: ${levels.join(', ')} - Level ${highestLevel} requires enhanced precautions.`;
+      } else {
+        healthStatus = 'safe';
+        message = `CDC Level ${highestLevel}: Practice usual precautions`;
+        details = `Multiple health risks detected: ${levels.join(', ')} - Level ${highestLevel} requires standard precautions.`;
+      }
+      
+      // Add specific level descriptions
+      const levelDetails = healthData.cdcLevels.map(l => 
+        `Level ${l.level}: ${l.description}`
+      ).join('; ');
+      
+      details += ` - ${levelDetails}`;
+      
+      console.log(`🏥 Final health status from backend levels for ${country}:`, {
+        status: healthStatus,
+        message,
+        details,
+        cdcLevels: levels,
+        highestLevel
+      });
+      
+      return {
+        status: healthStatus,
+        message,
+        emoji: healthStatus === 'safe' ? '✅' : healthStatus === 'caution' ? '⚠️' : healthStatus === 'warning' ? '🦟' : '🚨',
+        details
+      };
+    }
+
+    // Fallback to content analysis if no backend levels
+    console.log(`⚠️ No backend CDC levels, falling back to content analysis...`);
+    
+    // Combine all content sources for comprehensive analysis
+    const allContent = [
+      healthData.title,
+      healthData.heading,
+      healthData.content,
+      healthData.healthContent || '',
+      healthData.mainContent || '',
+      healthData.sidebarContent || '',
+      healthData.cdcContent || ''
+    ].join(' ').toLowerCase();
+    
     const countryLower = country.toLowerCase();
     
-    // Look for country mentions in CDC content
-    if (html.toLowerCase().includes(countryLower)) {
-      // Check for health risk indicators
-      let healthStatus = 'safe';
-      let message = 'No specific health alerts';
-      let details = 'Standard travel precautions recommended';
+    // Check if the content is relevant to the country
+    if (!allContent.includes(countryLower)) {
+      console.log(`⚠️ Content doesn't contain country name for ${country}`);
+      return null;
+    }
+
+    console.log(`🏥 Analyzing ${allContent.length} characters of combined content for CDC levels...`);
+
+    let healthStatus = 'safe';
+    let message = 'No specific health alerts';
+    let details = 'Standard travel precautions recommended';
+    let cdcLevels: string[] = [];
+
+    // Enhanced CDC risk level detection with more patterns
+    const levelPatterns = [
+      // Primary patterns
+      { pattern: /watch\s*level\s*1/i, level: 'safe', message: 'CDC Watch Level 1: Practice usual precautions', levelNum: '1' },
+      { pattern: /alert\s*level\s*2/i, level: 'caution', message: 'CDC Alert Level 2: Practice enhanced precautions', levelNum: '2' },
+      { pattern: /warning\s*level\s*3/i, level: 'warning', message: 'CDC Warning Level 3: Avoid nonessential travel', levelNum: '3' },
+      // Alternative patterns
+      { pattern: /level\s*1[:\s]*practice\s*usual\s*precautions/i, level: 'safe', message: 'CDC Level 1: Practice usual precautions', levelNum: '1' },
+      { pattern: /level\s*2[:\s]*practice\s*enhanced\s*precautions/i, level: 'caution', message: 'CDC Level 2: Practice enhanced precautions', levelNum: '2' },
+      { pattern: /level\s*3[:\s]*avoid\s*nonessential\s*travel/i, level: 'warning', message: 'CDC Level 3: Avoid nonessential travel', levelNum: '3' },
+      // Fallback patterns
+      { pattern: /level\s*1/i, level: 'safe', message: 'CDC Level 1: Practice usual precautions', levelNum: '1' },
+      { pattern: /level\s*2/i, level: 'caution', message: 'CDC Level 2: Practice enhanced precautions', levelNum: '2' },
+      { pattern: /level\s*3/i, level: 'warning', message: 'CDC Level 3: Avoid nonessential travel', levelNum: '3' },
+      // Additional CDC-specific patterns
+      { pattern: /cdc\s*level\s*1/i, level: 'safe', message: 'CDC Level 1: Practice usual precautions', levelNum: '1' },
+      { pattern: /cdc\s*level\s*2/i, level: 'caution', message: 'CDC Level 2: Practice enhanced precautions', levelNum: '2' },
+      { pattern: /cdc\s*level\s*3/i, level: 'warning', message: 'CDC Level 3: Avoid nonessential travel', levelNum: '3' },
+      // Travel advisory patterns
+      { pattern: /travel\s*advisory\s*level\s*1/i, level: 'safe', message: 'CDC Travel Advisory Level 1: Practice usual precautions', levelNum: '1' },
+      { pattern: /travel\s*advisory\s*level\s*2/i, level: 'caution', message: 'CDC Travel Advisory Level 2: Practice enhanced precautions', levelNum: '2' },
+      { pattern: /travel\s*advisory\s*level\s*3/i, level: 'warning', message: 'CDC Travel Advisory Level 3: Avoid nonessential travel', levelNum: '3' }
+    ];
+
+    // Find all CDC levels present
+    for (const pattern of levelPatterns) {
+      if (pattern.pattern.test(allContent)) {
+        cdcLevels.push(pattern.levelNum);
+        console.log(`🏥 Found CDC level ${pattern.levelNum} in server-side data`);
+      }
+    }
+
+    cdcLevels = [...new Set(cdcLevels)].sort();
+
+    if (cdcLevels.length > 0) {
+      console.log(`🏥 Found ${cdcLevels.length} CDC levels: ${cdcLevels.join(', ')}`);
+      const highestLevel = Math.max(...cdcLevels.map(Number));
       
-      // Look for specific health risks
-      if (html.toLowerCase().includes('dengue') || html.toLowerCase().includes('malaria')) {
+      if (highestLevel === 3) {
+        healthStatus = 'warning';
+        message = `CDC Multiple Levels: ${cdcLevels.join(', ')} - Highest: Level ${highestLevel}`;
+        details = `Multiple health risks detected. Level ${highestLevel} requires enhanced precautions.`;
+      } else if (highestLevel === 2) {
+        healthStatus = 'caution';
+        message = `CDC Multiple Levels: ${cdcLevels.join(', ')} - Highest: Level ${highestLevel}`;
+        details = `Multiple health risks detected. Level ${highestLevel} requires enhanced precautions.`;
+      } else {
+        healthStatus = 'safe';
+        message = `CDC Multiple Levels: ${cdcLevels.join(', ')} - Highest: Level ${highestLevel}`;
+        details = `Multiple health risks detected. Level ${highestLevel} requires standard precautions.`;
+      }
+    } else {
+      console.log(`⚠️ No CDC levels found, checking specific health risks...`);
+      
+      // Check for specific health risks
+      if (allContent.includes('dengue') || allContent.includes('malaria')) {
         healthStatus = 'warning';
         message = 'Mosquito-borne disease risk';
         details = 'Use insect protection, avoid standing water, consider antimalarial medication';
-      } else if (html.toLowerCase().includes('yellow fever')) {
+      } else if (allContent.includes('yellow fever')) {
         healthStatus = 'warning';
         message = 'Yellow fever risk';
         details = 'Vaccination required, use insect protection';
-      } else if (html.toLowerCase().includes('food') || html.toLowerCase().includes('water')) {
+      } else if (allContent.includes('food') || allContent.includes('water')) {
         healthStatus = 'caution';
         message = 'Food and water precautions';
         details = 'Drink bottled water, avoid street food, practice good hygiene';
-      } else if (html.toLowerCase().includes('vaccination') || html.toLowerCase().includes('vaccine')) {
+      } else if (allContent.includes('vaccination') || allContent.includes('vaccine')) {
         healthStatus = 'caution';
         message = 'Vaccination recommendations';
         details = 'Check vaccination requirements, consult travel health specialist';
       }
-      
-      return {
-        status: healthStatus as 'safe' | 'warning' | 'alert' | 'caution',
-        message,
-        emoji: healthStatus === 'safe' ? '✅' : healthStatus === 'caution' ? '⚠️' : healthStatus === 'warning' ? '🦟' : '🚨',
-        details
-      };
     }
+
+    // Enhanced details with vaccine and notice information
+    const additionalDetails = [];
+    if (healthData.hasVaccines) additionalDetails.push(`Vaccines: ${healthData.vaccineCount}`);
+    if (healthData.hasNotices) additionalDetails.push(`Notices: ${healthData.noticeCount}`);
+    if (healthData.hasHealthAlerts) additionalDetails.push('Health alerts present');
+    if (healthData.hasTravelNotices) additionalDetails.push('Travel notices present');
     
-    return null;
+    if (additionalDetails.length > 0) {
+      details += ` - ${additionalDetails.join(', ')}`;
+    }
+
+    console.log(`🏥 Final health status from content analysis for ${country}:`, {
+      status: healthStatus,
+      message,
+      details,
+      cdcLevels: cdcLevels.length > 0 ? cdcLevels : 'None detected',
+      contentAnalyzed: `${allContent.length} characters`
+    });
+
+    return {
+      status: healthStatus as 'safe' | 'warning' | 'alert' | 'caution',
+      message,
+      emoji: healthStatus === 'safe' ? '✅' : healthStatus === 'caution' ? '⚠️' : healthStatus === 'warning' ? '🦟' : '🚨',
+      details
+    };
+
   } catch (error) {
-    console.warn('⚠️ CDC HTML parsing failed:', error);
+    console.warn('⚠️ Server-side CDC data parsing failed:', error);
     return null;
   }
 }
 
-// Helper function to parse WHO outbreak data from HTML
-function parseWHOOutbreakData(html: string, country: string): HealthAlert | null {
-  try {
-    const countryLower = country.toLowerCase();
-    
-    // Look for country mentions in WHO content
-    if (html.toLowerCase().includes(countryLower)) {
-      // Check for outbreak indicators
-      let healthStatus = 'safe';
-      let message = 'No outbreak alerts';
-      let details = 'Standard travel precautions recommended';
-      
-      // Look for specific outbreak types
-      if (html.toLowerCase().includes('outbreak') || html.toLowerCase().includes('epidemic')) {
-        healthStatus = 'warning';
-        message = 'Disease outbreak reported';
-        details = 'Monitor local health advisories, practice enhanced hygiene';
-      } else if (html.toLowerCase().includes('emergency') || html.toLowerCase().includes('alert')) {
-        healthStatus = 'alert';
-        message = 'Health emergency declared';
-        details = 'Avoid non-essential travel, follow local health directives';
-      } else if (html.toLowerCase().includes('monitoring') || html.toLowerCase().includes('surveillance')) {
-        healthStatus = 'caution';
-        message = 'Enhanced health monitoring';
-        details = 'Stay informed of local health updates, practice good hygiene';
-      }
-      
-      return {
-        status: healthStatus as 'safe' | 'warning' | 'alert' | 'caution',
-        message,
-        emoji: healthStatus === 'safe' ? '✅' : healthStatus === 'caution' ? '⚠️' : healthStatus === 'warning' ? '🦟' : '🚨',
-        details
-      };
-    }
-    
-    return null;
-  } catch (error) {
-    console.warn('⚠️ WHO HTML parsing failed:', error);
-    return null;
-  }
-}
+
+
+
 
 // Fetch real security data from US State Department
-export const fetchSecurityData = async (destination: string): Promise<SecurityInfo> => {
+export const fetchSecurityData = async (destination: string, detectedCountry?: string): Promise<SecurityInfo> => {
   try {
-    console.log('🛡️ Scraping State Department travel advisories...');
-    
-    // Extract country from destination
-    const country = destination.split(',').pop()?.trim() || destination;
-    
-    // Try to scrape from State Department travel advisories
-    try {
-      // Use a CORS proxy to access the State Department website
-      const corsProxy = 'https://cors-anywhere.herokuapp.com/';
-      const stateDeptUrl = 'https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories.html';
-      
-      const response = await fetch(corsProxy + stateDeptUrl, {
-        method: 'GET',
-        headers: {
-          'Origin': 'http://localhost:3000'
-        }
-      });
-      
-      if (response.ok) {
-        console.log('✅ State Department website accessible, parsing travel advisories...');
-        const html = await response.text();
-        
-        // Parse the HTML to extract travel advisory data
-        // This is a simplified version - in production you'd want more robust parsing
-        const advisoryData = parseTravelAdvisories(html, country);
-        
-        if (advisoryData) {
-          console.log(`🛡️ Found travel advisory for ${country}:`, advisoryData);
-          return advisoryData;
-        } else {
-          console.log(`⚠️ No specific travel advisory found for ${country}`);
-        }
-      } else {
-        console.log(`⚠️ State Department returned status: ${response.status}`);
+    console.log('🛡️ Fetching security data from server-side State Department API...');
+
+    // Use detected country from OpenCage if available, otherwise extract from destination
+    const country = detectedCountry || destination.split(',').pop()?.trim() || destination;
+    console.log(`🛡️ Looking for security data for: ${country} (from ${detectedCountry ? 'OpenCage' : 'destination parsing'})`);
+
+    // Convert country name to slug format for the API
+    const countrySlug = country.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    console.log(`🛡️ Country slug generated: ${countrySlug}`);
+
+    // Call our server-side API route (no CORS issues!)
+    const apiUrl = `/api/security/${countrySlug}`;
+    console.log(`🛡️ Calling server-side security API: ${apiUrl}`);
+
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
       }
-    } catch (scrapingError) {
-      console.log('⚠️ State Department scraping failed, trying alternative sources...');
+    });
+
+    if (!response.ok) {
+      console.log(`⚠️ Server-side security API returned status: ${response.status}`);
+      throw new Error(`API returned status ${response.status}`);
     }
-    
-    // Fallback to alternative APIs if scraping fails
-    try {
-      const securityResponse = await fetch('https://api.travel-advisory.info/query', {
-        method: 'GET'
-      });
-      
-      if (securityResponse.ok) {
-        console.log('✅ Travel Advisory API accessible, checking for security data...');
-        const securityData = await securityResponse.json();
-        console.log('🛡️ Global security data available');
-        
-        // Check if there are country-specific security advisories
-        if (securityData.data && securityData.data[country]) {
-          const countrySecurity = securityData.data[country] as { [key: string]: unknown };
-          console.log(`🛡️ Found security data for ${country}:`, countrySecurity);
-        }
-      } else {
-        console.log(`⚠️ Travel Advisory API returned status: ${securityResponse.status}`);
-      }
-    } catch (travelAdvisoryError) {
-      console.log('⚠️ Travel Advisory API not accessible, using fallback data');
+
+    const securityData = await response.json();
+    console.log(`✅ Server-side security data received:`, securityData);
+
+    if (securityData.data) {
+      console.log(`🛡️ Security data found for ${country}:`, securityData.data);
+      return securityData.data;
+    } else {
+      console.log(`⚠️ No security data found for ${country}`);
+      return {
+        status: 'safe',
+        message: 'Security data unavailable',
+        emoji: '❓',
+        details: 'Unable to fetch current security information. Please check official sources for latest updates.'
+      };
     }
-    
-    // Enhanced mapping with real-time data sources as final fallback
-    const securityData: { [key: string]: SecurityInfo } = {
-      'Spain': { status: 'caution', message: 'Watch for pickpockets', emoji: '⚠️', details: 'Tourist areas can be crowded, stay alert' },
-      'Japan': { status: 'safe', message: 'Very safe for tourists', emoji: '🛡️', details: 'One of the safest countries in the world' },
-      'USA': { status: 'caution', message: 'Generally safe', emoji: '⚠️', details: 'Stay in well-lit areas at night, avoid isolated areas' },
-      'Indonesia': { status: 'safe', message: 'Safe for tourists', emoji: '🛡️', details: 'Standard precautions, avoid political demonstrations' },
-      'France': { status: 'caution', message: 'Watch for pickpockets', emoji: '⚠️', details: 'Tourist areas can be crowded, stay alert' },
-      'Brazil': { status: 'caution', message: 'Exercise caution', emoji: '⚠️', details: 'Avoid isolated areas, use registered taxis' },
-      'Mexico': { status: 'caution', message: 'Exercise caution', emoji: '⚠️', details: 'Avoid border areas, use registered transportation' },
-      'Thailand': { status: 'safe', message: 'Safe for tourists', emoji: '🛡️', details: 'Avoid political demonstrations, standard precautions' },
-      'India': { status: 'caution', message: 'Exercise caution', emoji: '⚠️', details: 'Avoid large crowds, use registered transportation' },
-      'Morocco': { status: 'caution', message: 'Exercise caution', emoji: '⚠️', details: 'Avoid isolated areas, use registered guides' }
-    };
-    
-    // Find exact match or partial match
-    let securityInfo = securityData[country];
-    if (!securityInfo) {
-      // Try partial matching
-      for (const [key, value] of Object.entries(securityData)) {
-        if (country.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(country.toLowerCase())) {
-          securityInfo = value;
-          break;
-        }
-      }
-    }
-    
-    // Default fallback
-    if (!securityInfo) {
-      securityInfo = { status: 'caution', message: 'Exercise standard precautions', emoji: '⚠️', details: 'Stay alert, avoid isolated areas' };
-    }
-    
-    console.log('✅ Security data fetched:', securityInfo);
-    return securityInfo;
-    
+
   } catch (error) {
-    console.warn('⚠️ Security API failed, using fallback:', error);
-    return { status: 'caution', message: 'Security data unavailable', emoji: '⚠️', details: 'Exercise standard travel precautions' };
+    console.warn('⚠️ Security API failed:', error);
+    return {
+      status: 'caution',
+      message: 'Security data unavailable',
+      emoji: '❓',
+      details: 'Unable to fetch current security information. Please check official sources for latest updates.'
+    };
   }
 };
 
-// Helper function to parse travel advisories from HTML
-function parseTravelAdvisories(html: string, country: string): SecurityInfo | null {
-  try {
-    // This is a simplified parser - in production you'd want more robust HTML parsing
-    // For now, we'll look for country names and risk levels in the HTML
-    
-    const countryLower = country.toLowerCase();
-    
-    // Look for country mentions and risk indicators
-    if (html.toLowerCase().includes(countryLower)) {
-      // Check for risk level indicators
-      let riskLevel = 'caution';
-      let message = 'Exercise standard precautions';
-      let details = 'Check official travel advisories for latest information';
-      
-      if (html.toLowerCase().includes('level 1')) {
-        riskLevel = 'safe';
-        message = 'Exercise normal precautions';
-        details = 'Level 1: Exercise normal precautions';
-      } else if (html.toLowerCase().includes('level 2')) {
-        riskLevel = 'caution';
-        message = 'Exercise increased caution';
-        details = 'Level 2: Exercise increased caution';
-      } else if (html.toLowerCase().includes('level 3')) {
-        riskLevel = 'warning';
-        message = 'Reconsider travel';
-        details = 'Level 3: Reconsider travel';
-      } else if (html.toLowerCase().includes('level 4')) {
-        riskLevel = 'alert';
-        message = 'Do not travel';
-        details = 'Level 4: Do not travel';
-      }
-      
-      // Look for specific risk indicators
-      const riskIndicators = [];
-      if (html.toLowerCase().includes('crime')) riskIndicators.push('CRIME');
-      if (html.toLowerCase().includes('terrorism')) riskIndicators.push('TERRORISM');
-      if (html.toLowerCase().includes('health')) riskIndicators.push('HEALTH');
-      if (html.toLowerCase().includes('civil unrest')) riskIndicators.push('CIVIL UNREST');
-      
-      if (riskIndicators.length > 0) {
-        details += ` - Risks: ${riskIndicators.join(', ')}`;
-      }
-      
-      return {
-        status: riskLevel as 'safe' | 'caution' | 'warning' | 'alert',
-        message,
-        emoji: riskLevel === 'safe' ? '🛡️' : riskLevel === 'caution' ? '⚠️' : riskLevel === 'warning' ? '🚨' : '🚫',
-        details
-      };
-    }
-    
-    return null;
-  } catch (error) {
-    console.warn('⚠️ HTML parsing failed:', error);
-    return null;
-  }
-}
+
+
+
 
 // Get coordinates for any destination using OpenCage Geocoding
 const getDestinationCoordinates = async (destination: string): Promise<{lat: number, lon: number}> => {
@@ -1449,6 +1397,21 @@ export const fetchLocationSnapshot = async (destination: string): Promise<Locati
   // Get default data first
   const defaultData = getDefaultData(destination);
   
+  // Detect country using OpenCage for health and security data
+  let detectedCountry: string | undefined;
+  try {
+    const searchResults = await searchGlobalDestination(destination);
+    if (searchResults.length > 0) {
+      const firstResult = searchResults[0];
+      if (firstResult.country) {
+        detectedCountry = firstResult.country;
+        console.log(`🌍 Country detected for health/security: ${detectedCountry}`);
+      }
+    }
+  } catch (_) {
+    console.warn('⚠️ Country detection failed, will use destination parsing');
+  }
+  
   // Initialize with fallback data
   let timezone: TimezoneInfo = {
     timezone: 'UTC',
@@ -1487,19 +1450,19 @@ export const fetchLocationSnapshot = async (destination: string): Promise<Locati
   // Try to fetch real data, but don't fail if APIs are down
   try {
     timezone = await fetchTimezoneData(destination);
-  } catch (error) {
+  } catch (_) {
     console.warn('⚠️ Timezone API failed, using fallback');
   }
   
   try {
     currency = await fetchCurrencyData(destination);
-  } catch (error) {
+  } catch (_) {
     console.warn('⚠️ Currency API failed, using fallback');
   }
   
   try {
     weather = await fetchWeatherData(destination);
-  } catch (error) {
+  } catch (_) {
     console.warn('⚠️ Weather API failed, using fallback');
   }
   
@@ -1507,7 +1470,7 @@ export const fetchLocationSnapshot = async (destination: string): Promise<Locati
   let events: EventInfo[] = [];
   try {
     events = await fetchEventsData(destination);
-  } catch (error) {
+  } catch (_) {
     console.warn('⚠️ Events API failed, using fallback');
     events = mockData.events[destination as keyof typeof mockData.events] || 
              [{ name: 'Local Events', type: 'cultural' as const, date: 'Check local calendar', emoji: '📅' }];
@@ -1517,23 +1480,23 @@ export const fetchLocationSnapshot = async (destination: string): Promise<Locati
   let attractions: AttractionInfo[] = [];
   try {
     attractions = await fetchAttractionsData(destination);
-  } catch (error) {
+  } catch (_) {
     console.warn('⚠️ Attractions API failed, using fallback');
-    attractions = mockData.attractions[destination as keyof typeof mockData.attractions] || 
+    attractions = mockData.attractions[destination as keyof typeof mockData.events] || 
                  [{ name: 'Local Attractions', type: 'Various', rating: 4.0, distance: 'Various', emoji: '🏛️' }];
   }
 
   let health: HealthAlert = { status: 'safe', message: 'Health data unavailable', emoji: '✅', details: 'Standard travel precautions recommended' };
   try {
-    health = await fetchHealthData(destination);
-  } catch (error) {
+    health = await fetchHealthData(destination, detectedCountry);
+  } catch (_) {
     console.warn('⚠️ Health API failed, using fallback');
   }
 
   let security: SecurityInfo = { status: 'caution', message: 'Security data unavailable', emoji: '⚠️', details: 'Exercise standard travel precautions' };
   try {
-    security = await fetchSecurityData(destination);
-  } catch (error) {
+    security = await fetchSecurityData(destination, detectedCountry);
+  } catch (_) {
     console.warn('⚠️ Security API failed, using fallback');
   }
   
@@ -1553,3 +1516,9 @@ export const fetchLocationSnapshot = async (destination: string): Promise<Locati
     ...restDefaultData
   };
 };
+
+
+
+
+
+
