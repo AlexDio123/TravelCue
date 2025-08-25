@@ -10,6 +10,65 @@ interface HealthSecurityCardProps {
 export default function HealthSecurityCard({ healthAlerts, security }: HealthSecurityCardProps) {
   const { formatted: lastUpdated, isClient } = useFormattedDate('date');
   
+  // Function to get clear explanation of CDC health level
+  const getHealthLevelExplanation = (message: string) => {
+    const lowerMessage = message.toLowerCase();
+    
+    if (lowerMessage.includes('level 1') || lowerMessage.includes('watch level 1')) {
+      return {
+        level: 'Level 1',
+        explanation: 'Normal Precautions',
+        description: 'Exercise normal travel precautions. The destination is safe to visit with standard precautions.',
+        color: 'text-blue-600',
+        bgColor: 'bg-blue-50',
+        borderColor: 'border-blue-200'
+      };
+    }
+    
+    if (lowerMessage.includes('level 2') || lowerMessage.includes('alert level 2')) {
+      return {
+        level: 'Level 2',
+        explanation: 'Enhanced Precautions',
+        description: 'Exercise enhanced precautions. There are some health risks, but travel is safe with additional measures.',
+        color: 'text-yellow-600',
+        bgColor: 'bg-yellow-50',
+        borderColor: 'border-yellow-200'
+      };
+    }
+    
+    if (lowerMessage.includes('level 3') || lowerMessage.includes('warning level 3')) {
+      return {
+        level: 'Level 3',
+        explanation: 'Avoid Nonessential Travel',
+        description: 'Avoid nonessential travel. There are significant health risks that require special consideration.',
+        color: 'text-orange-600',
+        bgColor: 'bg-orange-50',
+        borderColor: 'border-orange-200'
+      };
+    }
+    
+    if (lowerMessage.includes('level 4') || lowerMessage.includes('warning level 4')) {
+      return {
+        level: 'Level 4',
+        explanation: 'Avoid All Travel',
+        description: 'Avoid all travel. There are extreme health risks that make the destination dangerous.',
+        color: 'text-red-600',
+        bgColor: 'bg-red-50',
+        borderColor: 'border-red-200'
+      };
+    }
+    
+    // Fallback for other cases
+    return {
+      level: 'Information',
+      explanation: 'Check Recommendations',
+      description: 'Check specific CDC recommendations for this destination.',
+      color: 'text-gray-600',
+      bgColor: 'bg-gray-50',
+      borderColor: 'border-gray-200'
+    };
+  };
+  
   const getHealthStatusIcon = () => {
     switch (healthAlerts.status) {
       case 'safe':
@@ -77,16 +136,36 @@ export default function HealthSecurityCard({ healthAlerts, security }: HealthSec
             <h4 className="font-medium text-gray-800">Health Alerts</h4>
           </div>
           
-          <div className={`rounded-lg p-3 border ${getHealthStatusColor()}`}>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-lg">{healthAlerts.emoji}</span>
-              <span className="font-medium">{healthAlerts.message}</span>
-            </div>
-            
-            {healthAlerts.details && (
-              <p className="text-sm opacity-90">{healthAlerts.details}</p>
-            )}
-          </div>
+          {/* Explicación clara del nivel de salud */}
+          {(() => {
+            const healthExplanation = getHealthLevelExplanation(healthAlerts.message);
+            return (
+              <div className={`rounded-lg p-3 border ${healthExplanation.bgColor} ${healthExplanation.borderColor}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">{healthAlerts.emoji}</span>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`font-bold text-lg ${healthExplanation.color}`}>
+                        {healthExplanation.level}
+                      </span>
+                      <span className="text-sm text-gray-600">•</span>
+                      <span className="font-medium text-gray-800">
+                        {healthExplanation.explanation}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-700 leading-relaxed">
+                      {healthExplanation.description}
+                    </p>
+                  </div>
+                </div>
+                
+                {/* CDC Source Information */}
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <p className="text-xs text-gray-600 font-medium mb-1">Source: CDC Travel Health</p>
+                </div>
+              </div>
+            );
+          })()}
         </div>
         
         {/* Security Info */}

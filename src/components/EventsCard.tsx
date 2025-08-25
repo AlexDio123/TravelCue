@@ -1,11 +1,18 @@
+import { useState } from 'react';
 import { EventInfo } from '@/types';
-import { Calendar, MapPin, Music, Trophy, Palette, Star } from 'lucide-react';
+import { Calendar, MapPin, Music, Trophy, Palette, Star, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface EventsCardProps {
   events: EventInfo[];
 }
 
 export default function EventsCard({ events }: EventsCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  // Show only 4 events initially, or all if expanded
+  const displayedEvents = isExpanded ? events : events.slice(0, 4);
+  const hasMoreEvents = events.length > 4;
+  
   const getEventIcon = (type: EventInfo['type']) => {
     switch (type) {
       case 'music':
@@ -41,47 +48,69 @@ export default function EventsCard({ events }: EventsCardProps) {
       
       <div className="space-y-3">
         {events.length > 0 ? (
-          events.map((event, index) => (
-            <div key={index} className="bg-gray-50 rounded-lg p-3">
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0">
-                  <span className="text-2xl">{event.emoji}</span>
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-medium text-gray-800 truncate">{event.name}</h4>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEventTypeColor(event.type)}`}>
-                      {event.type}
-                    </span>
+          <>
+            {displayedEvents.map((event, index) => (
+              <div key={index} className="bg-gray-50 rounded-lg p-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0">
+                    <span className="text-2xl">{event.emoji}</span>
                   </div>
                   
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
-                      <span>{event.date}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-medium text-gray-800 truncate">{event.name}</h4>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEventTypeColor(event.type)}`}>
+                        {event.type}
+                      </span>
                     </div>
                     
-                    {event.venue && (
+                    <div className="flex items-center gap-4 text-sm text-gray-600">
                       <div className="flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />
-                        <span className="truncate">{event.venue}</span>
+                        <Calendar className="w-3 h-3" />
+                        <span>{event.date}</span>
                       </div>
-                    )}
+                      
+                      {event.venue && (
+                        <div className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          <span className="truncate">{event.venue}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex-shrink-0">
+                    {getEventIcon(event.type)}
                   </div>
                 </div>
-                
-                <div className="flex-shrink-0">
-                  {getEventIcon(event.type)}
-                </div>
               </div>
-            </div>
-          ))
+            ))}
+            
+            {/* Expand/Collapse Button */}
+            {hasMoreEvents && (
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                {isExpanded ? (
+                  <>
+                    <ChevronUp className="w-4 h-4" />
+                    Show Less
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="w-4 h-4" />
+                    Show {events.length - 4} More Events
+                  </>
+                )}
+              </button>
+            )}
+          </>
         ) : (
           <div className="text-center py-6 text-gray-500">
             <Calendar className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-            <p className="text-sm">No upcoming events</p>
-            <p className="text-xs">Check local calendars for updates</p>
+            <p className="text-sm">No events found for this place</p>
+            <p className="text-xs">Check local calendars or tourism websites for updates</p>
           </div>
         )}
         

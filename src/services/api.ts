@@ -156,59 +156,58 @@ export const fetchAttractionsData = async (destination: string, coordinates?: {l
         }
       } catch (_) {
         console.log('⚠️ Could not get coordinates for attractions search');
-        return generateFallbackAttractions(destination);
+        return [];
       }
     }
     
     if (!coordinates || !coordinates.lat || !coordinates.lon) {
       console.log('⚠️ No valid coordinates for attractions search');
-      return generateFallbackAttractions(destination);
+      return [];
     }
     
     // Step 2: Use OpenStreetMap Overpass API for reliable attractions data
     console.log('🗺️ Fetching attractions from OpenStreetMap Overpass API...');
     
     try {
-      // Build Overpass query to find attractions within 30km radius (excluding hotels/residential)
-      const overpassQuery = `
-        [out:json][timeout:25];
-        (
-          // Museums and cultural venues
-          node["amenity"="museum"](around:30000,${coordinates.lat},${coordinates.lon});
-          node["amenity"="theatre"](around:30000,${coordinates.lat},${coordinates.lon});
-          node["amenity"="cinema"](around:30000,${coordinates.lat},${coordinates.lon});
-          
-          // Historic sites (excluding simple memorials)
-          node["historic"="archaeological_site"](around:30000,${coordinates.lat},${coordinates.lon});
-          node["historic"="castle"](around:30000,${coordinates.lat},${coordinates.lon});
-          node["historic"="fort"](around:30000,${coordinates.lat},${coordinates.lon});
-          node["historic"="ruins"](around:30000,${coordinates.lat},${coordinates.lon});
-          
-          // Parks and natural attractions
-          node["leisure"="park"](around:30000,${coordinates.lat},${coordinates.lon});
-          node["natural"="cave_entrance"](around:30000,${coordinates.lat},${coordinates.lon});
-          node["natural"="beach"](around:30000,${coordinates.lat},${coordinates.lon});
-          
-          // Tourist attractions (excluding hotels)
-          node["tourism"="attraction"](around:30000,${coordinates.lat},${coordinates.lon});
-          node["tourism"="museum"](around:30000,${coordinates.lat},${coordinates.lon});
-          node["tourism"="artwork"](around:30000,${coordinates.lat},${coordinates.lon});
-          node["tourism"="viewpoint"](around:30000,${coordinates.lat},${coordinates.lon});
-          
-          // Landmarks and monuments
-          node["landmark"](around:30000,${coordinates.lat},${coordinates.lon});
-          node["man_made"="tower"](around:30000,${coordinates.lat},${coordinates.lon});
-          node["man_made"="bridge"](around:30000,${coordinates.lat},${coordinates.lon});
-          
-          // Ways (areas) for larger attractions
-          way["leisure"="park"](around:30000,${coordinates.lat},${coordinates.lon});
-          way["historic"](around:30000,${coordinates.lat},${coordinates.lon});
-          way["tourism"="attraction"](around:30000,${coordinates.lat},${coordinates.lon});
-        );
-        out body;
-        >;
-        out skel qt;
-      `;
+              // Build Overpass query to find attractions within 30km radius (excluding hotels/residential/cinemas)
+        const overpassQuery = `
+          [out:json][timeout:25];
+          (
+            // Museums and cultural venues (excluding cinemas)
+            node["amenity"="museum"](around:30000,${coordinates.lat},${coordinates.lon});
+            node["amenity"="theatre"](around:30000,${coordinates.lat},${coordinates.lon});
+            
+            // Historic sites (excluding simple memorials)
+            node["historic"="archaeological_site"](around:30000,${coordinates.lat},${coordinates.lon});
+            node["historic"="castle"](around:30000,${coordinates.lat},${coordinates.lon});
+            node["historic"="fort"](around:30000,${coordinates.lat},${coordinates.lon});
+            node["historic"="ruins"](around:30000,${coordinates.lat},${coordinates.lon});
+            
+            // Parks and natural attractions
+            node["leisure"="park"](around:30000,${coordinates.lat},${coordinates.lon});
+            node["natural"="cave_entrance"](around:30000,${coordinates.lat},${coordinates.lon});
+            node["natural"="beach"](around:30000,${coordinates.lat},${coordinates.lon});
+            
+            // Tourist attractions (excluding hotels)
+            node["tourism"="attraction"](around:30000,${coordinates.lat},${coordinates.lon});
+            node["tourism"="museum"](around:30000,${coordinates.lat},${coordinates.lon});
+            node["tourism"="artwork"](around:30000,${coordinates.lat},${coordinates.lon});
+            node["tourism"="viewpoint"](around:30000,${coordinates.lat},${coordinates.lon});
+            
+            // Landmarks and monuments
+            node["landmark"](around:30000,${coordinates.lat},${coordinates.lon});
+            node["man_made"="tower"](around:30000,${coordinates.lat},${coordinates.lon});
+            node["man_made"="bridge"](around:30000,${coordinates.lat},${coordinates.lon});
+            
+            // Ways (areas) for larger attractions
+            way["leisure"="park"](around:30000,${coordinates.lat},${coordinates.lon});
+            way["historic"](around:30000,${coordinates.lat},${coordinates.lon});
+            way["tourism"="attraction"](around:30000,${coordinates.lat},${coordinates.lon});
+          );
+          out body;
+          >;
+          out skel qt;
+        `;
       
       const response = await fetch('https://overpass-api.de/api/interpreter', {
         method: 'POST',
@@ -232,17 +231,17 @@ export const fetchAttractionsData = async (destination: string, coordinates?: {l
             
             const tags = element.tags;
             
-            // Only include tourist-relevant attractions, exclude hotels, residential, etc.
+            // Only include tourist-relevant attractions, exclude hotels, residential, cinemas, etc.
             if (tags.tourism === 'hotel' || tags.tourism === 'guest_house' || tags.tourism === 'motel') return false;
             if (tags.amenity === 'place_of_worship' && !tags.historic) return false; // Only historic churches
             if (tags.historic === 'memorial' && !tags.tourism) return false; // Only tourist memorials
+            if (tags.amenity === 'cinema') return false; // Exclude cinemas
             
             // Include only these specific attraction types
             return (
-              // Museums and cultural venues
+              // Museums and cultural venues (excluding cinemas)
               tags.amenity === 'museum' ||
               tags.amenity === 'theatre' ||
-              tags.amenity === 'cinema' ||
               
               // Historic sites
               (tags.historic && tags.historic !== 'memorial') ||
@@ -275,9 +274,6 @@ export const fetchAttractionsData = async (destination: string, coordinates?: {l
             } else if (element.tags.amenity === 'theatre') {
               type = 'Theater';
               emoji = '🎭';
-            } else if (element.tags.amenity === 'cinema') {
-              type = 'Cinema';
-              emoji = '🎬';
             } else if (element.tags.historic === 'archaeological_site') {
               type = 'Archaeological';
               emoji = '🏺';
@@ -332,57 +328,18 @@ export const fetchAttractionsData = async (destination: string, coordinates?: {l
       console.log('⚠️ OpenStreetMap Overpass API failed:', overpassError);
     }
     
-    // Step 3: Fallback to intelligent mock attractions based on location
-    return generateFallbackAttractions(destination);
+    // Step 3: No attractions available
+    return [];
     
   } catch (error: unknown) {
-    console.warn('⚠️ Attractions generation failed, using basic fallback:', error);
-    return generateFallbackAttractions(destination);
+    console.warn('⚠️ Attractions generation failed, no attractions available:', error);
+    return [];
   }
 };
 
 
 
-// Generate intelligent fallback attractions based on destination
-const generateFallbackAttractions = (destination: string): AttractionInfo[] => {
-  const destinationLower = destination.toLowerCase();
-  
-  // Generate contextually relevant attractions based on destination
-  if (destinationLower.includes('paris') || destinationLower.includes('france')) {
-    return [
-      { name: 'Eiffel Tower', type: 'Landmark', rating: 4.7, distance: 'Nearby', emoji: '🗼' },
-      { name: 'Louvre Museum', type: 'Cultural', rating: 4.6, distance: 'Nearby', emoji: '🏛️' },
-      { name: 'Notre-Dame Cathedral', type: 'Religious', rating: 4.5, distance: 'Nearby', emoji: '⛪' },
-      { name: 'Arc de Triomphe', type: 'Historic', rating: 4.4, distance: 'Nearby', emoji: '🏛️' },
-      { name: 'Champs-Élysées', type: 'Shopping', rating: 4.3, distance: 'Nearby', emoji: '🛍️' }
-    ];
-  } else if (destinationLower.includes('barcelona') || destinationLower.includes('spain')) {
-    return [
-      { name: 'Sagrada Familia', type: 'Religious', rating: 4.8, distance: 'Nearby', emoji: '⛪' },
-      { name: 'Park Güell', type: 'Natural', rating: 4.6, distance: 'Nearby', emoji: '🌳' },
-      { name: 'Casa Batlló', type: 'Architecture', rating: 4.5, distance: 'Nearby', emoji: '🏛️' },
-      { name: 'La Rambla', type: 'Shopping', rating: 4.3, distance: 'Nearby', emoji: '🛍️' },
-      { name: 'Gothic Quarter', type: 'Historic', rating: 4.4, distance: 'Nearby', emoji: '🏰' }
-    ];
-  } else if (destinationLower.includes('tokyo') || destinationLower.includes('japan')) {
-    return [
-      { name: 'Senso-ji Temple', type: 'Religious', rating: 4.6, distance: 'Nearby', emoji: '⛩️' },
-      { name: 'Tokyo Skytree', type: 'Landmark', rating: 4.5, distance: 'Nearby', emoji: '🗼' },
-      { name: 'Shibuya Crossing', type: 'Urban', rating: 4.4, distance: 'Nearby', emoji: '🚶' },
-      { name: 'Meiji Shrine', type: 'Religious', rating: 4.7, distance: 'Nearby', emoji: '⛩️' },
-      { name: 'Tsukiji Market', type: 'Cultural', rating: 4.3, distance: 'Nearby', emoji: '🐟' }
-    ];
-  } else {
-    // Generic attractions for other destinations
-    return [
-      { name: 'Historic Cathedral', type: 'Religious', rating: 4.5, distance: 'Nearby', emoji: '⛪' },
-      { name: 'Central Plaza', type: 'Public Space', rating: 4.2, distance: 'Nearby', emoji: '🏛️' },
-      { name: 'Local Museum', type: 'Cultural', rating: 4.0, distance: 'Nearby', emoji: '🏛️' },
-      { name: 'Historic Fortress', type: 'Historic', rating: 4.3, distance: 'Nearby', emoji: '🏰' },
-      { name: 'City Park', type: 'Natural', rating: 4.1, distance: 'Nearby', emoji: '🌳' }
-    ];
-  }
-};
+
 
 // Fetch real events from PredictHQ API
 export const fetchEventsData = async (destination: string): Promise<EventInfo[]> => {
@@ -405,8 +362,8 @@ export const fetchEventsData = async (destination: string): Promise<EventInfo[]>
     }
     
     if (!coordinates) {
-      // No coordinates available, using fallback events
-      return generateFallbackEvents(city);
+      // No coordinates available, no events
+      return [];
     }
     
     // Search for events using PredictHQ API
@@ -484,11 +441,11 @@ export const fetchEventsData = async (destination: string): Promise<EventInfo[]>
       return events;
     }
     
-          // No events found from PredictHQ, using fallback
-    return generateFallbackEvents(city);
+          // No events found from PredictHQ
+    return [];
     
   } catch (error: unknown) {
-    console.warn('⚠️ PredictHQ API failed, using fallback events:', error);
+    console.warn('⚠️ PredictHQ API failed, no events available:', error);
     
     // Log specific error details for debugging
     if (error && typeof error === 'object' && 'response' in error) {
@@ -502,59 +459,12 @@ export const fetchEventsData = async (destination: string): Promise<EventInfo[]>
       });
     }
     
-    // Extract city name for fallback
-    const city = destination.split(',')[0].trim();
-    return generateFallbackEvents(city);
+    // Return empty array instead of mock data
+    return [];
   }
 };
 
-// Generate simple, scalable fallback events
-const generateFallbackEvents = (city: string): EventInfo[] => {
-  const now = Date.now();
-  const oneWeek = 7 * 24 * 60 * 60 * 1000;
-  const twoWeeks = 14 * 24 * 60 * 60 * 1000;
-  const threeWeeks = 21 * 24 * 60 * 60 * 1000;
-  const fourWeeks = 28 * 24 * 60 * 60 * 1000;
-  const fiveWeeks = 35 * 24 * 60 * 60 * 1000;
-  
-  return [
-    {
-      name: `${city} Cultural Festival`,
-      type: 'cultural',
-      date: new Date(now + oneWeek).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      emoji: '🎭',
-      venue: 'City Center'
-    },
-    {
-      name: `${city} Music Night`,
-      type: 'music',
-      date: new Date(now + twoWeeks).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      emoji: '🎸',
-      venue: 'Local Arena'
-    },
-    {
-      name: `${city} Food & Wine Expo`,
-      type: 'cultural',
-      date: new Date(now + threeWeeks).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      emoji: '🍷',
-      venue: 'Convention Center'
-    },
-    {
-      name: `${city} Sports Championship`,
-      type: 'sports',
-      date: new Date(now + fourWeeks).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      emoji: '⚽',
-      venue: 'Stadium'
-    },
-    {
-      name: `${city} Art Exhibition`,
-      type: 'cultural',
-      date: new Date(now + fiveWeeks).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      emoji: '🎨',
-      venue: 'Art Gallery'
-    }
-  ];
-};
+
 
 
 
@@ -946,6 +856,22 @@ export const fetchHealthData = async (destination: string, detectedCountry?: str
     // Use detected country from OpenCage if available, otherwise extract from destination
     const country = detectedCountry || destination.split(',').pop()?.trim() || destination;
     console.log(`🏥 Looking for health data for: ${country} (from ${detectedCountry ? 'OpenCage' : 'destination parsing'})`);
+    
+    // Special handling for United States
+    if (country.toLowerCase().includes('united states') || 
+        country.toLowerCase().includes('usa') ||
+        country.toLowerCase().includes('us') ||
+        destination.toLowerCase().includes('united states') ||
+        destination.toLowerCase().includes('usa') ||
+        destination.toLowerCase().includes('us')) {
+      console.log('🇺🇸 United States detected - using standard health message');
+      return {
+        status: 'safe',
+        message: 'United States - Standard Health Precautions',
+        details: 'The United States maintains high health standards. Follow standard travel precautions as you would in any developed country. No specific health alerts are currently active.',
+        emoji: '✅'
+      };
+    }
 
     // Get CDC slug for the country
     const cdcSlug = getCDCSlug(country);
@@ -1050,24 +976,26 @@ function parseServerSideCDCData(healthData: {
       
       if (highestLevel === 3) {
         healthStatus = 'warning';
-        message = `CDC Level ${highestLevel}: Avoid nonessential travel`;
-        details = `Multiple health risks detected: ${levels.join(', ')} - Level ${highestLevel} requires avoiding nonessential travel.`;
+        message = `CDC Level ${highestLevel}`;
+        details = `Multiple health levels detected: ${levels.join(', ')}. Highest risk level requires avoiding nonessential travel.`;
       } else if (highestLevel === 2) {
         healthStatus = 'caution';
-        message = `CDC Level ${highestLevel}: Practice enhanced precautions`;
-        details = `Multiple health risks detected: ${levels.join(', ')} - Level ${highestLevel} requires enhanced precautions.`;
+        message = `CDC Level ${highestLevel}`;
+        details = `Multiple health levels detected: ${levels.join(', ')}. Highest risk level requires enhanced precautions.`;
       } else {
         healthStatus = 'safe';
-        message = `CDC Level ${highestLevel}: Practice usual precautions`;
-        details = `Multiple health risks detected: ${levels.join(', ')} - Level ${highestLevel} requires standard precautions.`;
+        message = `CDC Level ${highestLevel}`;
+        details = `Multiple health levels detected: ${levels.join(', ')}. Highest risk level requires standard precautions.`;
       }
       
-      // Add specific level descriptions
-      const levelDetails = healthData.cdcLevels.map(l => 
-        `Level ${l.level}: ${l.description}`
-      ).join('; ');
-      
-      details += ` - ${levelDetails}`;
+      // Add specific level descriptions (only if there are multiple levels)
+      if (healthData.cdcLevels.length > 1) {
+        const levelDetails = healthData.cdcLevels.map(l => 
+          `Level ${l.level}: ${l.description}`
+        ).join('; ');
+        
+        details += ` - ${levelDetails}`;
+      }
       
       console.log(`🏥 Final health status from backend levels for ${country}:`, {
         status: healthStatus,
@@ -1232,6 +1160,22 @@ export const fetchSecurityData = async (destination: string, detectedCountry?: s
     // Use detected country from OpenCage if available, otherwise extract from destination
     const country = detectedCountry || destination.split(',').pop()?.trim() || destination;
     console.log(`🛡️ Looking for security data for: ${country} (from ${detectedCountry ? 'OpenCage' : 'destination parsing'})`);
+    
+    // Special handling for United States
+    if (country.toLowerCase().includes('united states') || 
+        country.toLowerCase().includes('usa') ||
+        country.toLowerCase().includes('us') ||
+        destination.toLowerCase().includes('united states') ||
+        destination.toLowerCase().includes('usa') ||
+        destination.toLowerCase().includes('us')) {
+      console.log('🇺🇸 United States detected - using standard security message');
+      return {
+        status: 'safe',
+        message: 'United States - Standard Security Precautions',
+        details: 'The United States maintains high security standards. Follow standard travel precautions as you would in any developed country. No specific security alerts are currently active.',
+        emoji: '🛡️'
+      };
+    }
 
     // Convert country name to slug format for the API
     const countrySlug = country.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');

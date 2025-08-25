@@ -115,7 +115,14 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
             onChange={(e) => handleInputChange(e.target.value)}
             onFocus={() => setShowSuggestions(true)}
             placeholder="Enter destination (e.g., Barcelona, Spain)"
-            className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors text-gray-900 placeholder-gray-400 disabled:text-gray-400 disabled:bg-gray-50"
+            className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors"
+            style={{ 
+              color: '#000000 !important',
+              fontSize: '18px',
+              fontWeight: '400',
+              WebkitTextFillColor: '#000000 !important',
+              WebkitTextStrokeColor: '#000000 !important'
+            }}
             disabled={isLoading}
           />
           <button
