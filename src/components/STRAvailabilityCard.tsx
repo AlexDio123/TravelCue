@@ -3,12 +3,14 @@
 import { STRAvailability } from '@/types';
 import { Home, Star, Bed, Building2, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useTranslationContext } from '@/contexts/TranslationContext';
 
 interface STRAvailabilityCardProps {
   destination: string;
 }
 
 export default function STRAvailabilityCard({ destination }: STRAvailabilityCardProps) {
+  const { t, updateCounter } = useTranslationContext();
   const [strData, setStrData] = useState<STRAvailability | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -240,8 +242,8 @@ export default function STRAvailabilityCard({ destination }: STRAvailabilityCard
                       <div className="text-3xl font-bold text-purple-600 mb-2">
                         {count > 0 ? count : 'N/A'}
                       </div>
-                      <p className="text-sm text-gray-600">Accommodation Available</p>
-                      <p className="text-xs text-gray-500">within 10km radius</p>
+                      <p className="text-sm text-gray-600">{t('cards.accommodation.accommodationAvailable')}</p>
+                      <p className="text-xs text-gray-500">{t('cards.accommodation.withinRadius')}</p>
                     </div>
             
                     {/* Accommodation Options List - Expanded */}

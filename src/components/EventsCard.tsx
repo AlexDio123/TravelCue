@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { EventInfo } from '@/types';
 import { Calendar, MapPin, Music, Trophy, Palette, Star, ChevronDown, ChevronUp } from 'lucide-react';
+import { useTranslationContext } from '@/contexts/TranslationContext';
 
 interface EventsCardProps {
   events: EventInfo[];
 }
 
 export default function EventsCard({ events }: EventsCardProps) {
+  const { t, updateCounter } = useTranslationContext();
   const [isExpanded, setIsExpanded] = useState(false);
   
   // Show only 4 events initially, or all if expanded
@@ -43,7 +45,7 @@ export default function EventsCard({ events }: EventsCardProps) {
     <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
       <div className="flex items-center gap-2 mb-3">
         <Calendar className="w-5 h-5 text-purple-600" />
-        <h3 className="font-semibold text-gray-800">🎸⚽️ Events</h3>
+        <h3 className="font-semibold text-gray-800">{t('cards.events.title')}</h3>
       </div>
       
       <div className="space-y-3">
@@ -100,7 +102,7 @@ export default function EventsCard({ events }: EventsCardProps) {
                 ) : (
                   <>
                     <ChevronDown className="w-4 h-4" />
-                    Show {events.length - 4} More Events
+                    {t('cards.events.expand')} ({events.length - 4})
                   </>
                 )}
               </button>
@@ -109,8 +111,8 @@ export default function EventsCard({ events }: EventsCardProps) {
         ) : (
           <div className="text-center py-6 text-gray-500">
             <Calendar className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-            <p className="text-sm">No events found for this place</p>
-            <p className="text-xs">Check local calendars or tourism websites for updates</p>
+                            <p className="text-sm">{t('cards.events.noEvents')}</p>
+                                      <p className="text-xs">{t('cards.events.checkLocal')}</p>
           </div>
         )}
         

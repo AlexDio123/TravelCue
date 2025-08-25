@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, MapPin, Loader2 } from 'lucide-react';
 import { searchGlobalDestination } from '@/services/api';
+import { useTranslationContext } from '@/contexts/TranslationContext';
 
 interface Destination {
   name: string;
@@ -19,6 +20,7 @@ interface GlobalSearchFormProps {
 }
 
 export default function GlobalSearchForm({ onSearch, isLoading = false }: GlobalSearchFormProps) {
+  const { t, updateCounter } = useTranslationContext();
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Destination[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -104,7 +106,7 @@ export default function GlobalSearchForm({ onSearch, isLoading = false }: Global
             type="text"
             value={query}
             onChange={(e) => handleInputChange(e.target.value)}
-            placeholder="Buscar cualquier destino del mundo... (ej: Barcelona, Tokyo, New York)"
+            placeholder={t('common.searchPlaceholder')}
             className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 bg-white shadow-sm"
             disabled={isLoading}
           />

@@ -1,12 +1,14 @@
 import { TimezoneInfo } from '@/types';
 import { Clock, Globe } from 'lucide-react';
 import { useClientDate } from '@/hooks/useClientDate';
+import { useTranslationContext } from '@/contexts/TranslationContext';
 
 interface TimezoneCardProps {
   timezone: TimezoneInfo;
 }
 
 export default function TimezoneCard({ timezone }: TimezoneCardProps) {
+  const { t, updateCounter } = useTranslationContext();
   const { currentTime, isClient } = useClientDate();
   
   const formatTime = (isoString: string) => {
@@ -64,19 +66,19 @@ export default function TimezoneCard({ timezone }: TimezoneCardProps) {
     <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
       <div className="flex items-center gap-2 mb-3">
         <Clock className="w-5 h-5 text-blue-600" />
-        <h3 className="font-semibold text-gray-800">⏰ Timezone</h3>
+        <h3 className="font-semibold text-gray-800">{t('cards.timezone.title')}</h3>
       </div>
       
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">Current Time</span>
+          <span className="text-sm text-gray-600">{t('cards.timezone.currentTime')}</span>
           <span className="font-mono text-lg font-semibold text-gray-800">
             {isClient ? formatTime(timezone.currentTime) : 'Loading...'}
           </span>
         </div>
         
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">Timezone</span>
+          <span className="text-sm text-gray-600">{t('cards.timezone.userTimezone')}</span>
           <div className="flex items-center gap-1">
             <Globe className="w-4 h-4 text-gray-500" />
             <span className="text-sm font-medium text-gray-700">
@@ -86,7 +88,7 @@ export default function TimezoneCard({ timezone }: TimezoneCardProps) {
         </div>
         
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">Time Difference</span>
+          <span className="text-sm text-gray-600">{t('cards.timezone.timeDifference')}</span>
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
             timezone.isSameTimezone
               ? 'bg-blue-100 text-blue-800'
@@ -94,7 +96,7 @@ export default function TimezoneCard({ timezone }: TimezoneCardProps) {
                 ? 'bg-green-100 text-green-800' 
                 : 'bg-red-100 text-red-800'
           }`}>
-            {timezone.timeDifference}
+            {timezone.isSameTimezone ? t('cards.timezone.sameTimezone') : timezone.timeDifference}
           </span>
         </div>
         

@@ -1,6 +1,7 @@
 import { HealthAlert, SecurityInfo } from '@/types';
 import { Shield, AlertTriangle, CheckCircle, Info } from 'lucide-react';
 import { useFormattedDate } from '@/hooks/useClientDate';
+import { useTranslationContext } from '@/contexts/TranslationContext';
 
 interface HealthSecurityCardProps {
   healthAlerts: HealthAlert;
@@ -8,6 +9,7 @@ interface HealthSecurityCardProps {
 }
 
 export default function HealthSecurityCard({ healthAlerts, security }: HealthSecurityCardProps) {
+  const { t, updateCounter } = useTranslationContext();
   const { formatted: lastUpdated, isClient } = useFormattedDate('date');
   
   // Function to get clear explanation of CDC health level
@@ -16,9 +18,9 @@ export default function HealthSecurityCard({ healthAlerts, security }: HealthSec
     
     if (lowerMessage.includes('level 1') || lowerMessage.includes('watch level 1')) {
       return {
-        level: 'Level 1',
-        explanation: 'Normal Precautions',
-        description: 'Exercise normal travel precautions. The destination is safe to visit with standard precautions.',
+        level: t('cards.health.level1'),
+        explanation: t('cards.health.normalPrecautions'),
+        description: t('cards.health.exerciseNormalPrecautions'),
         color: 'text-blue-600',
         bgColor: 'bg-blue-50',
         borderColor: 'border-blue-200'
@@ -27,9 +29,9 @@ export default function HealthSecurityCard({ healthAlerts, security }: HealthSec
     
     if (lowerMessage.includes('level 2') || lowerMessage.includes('alert level 2')) {
       return {
-        level: 'Level 2',
-        explanation: 'Enhanced Precautions',
-        description: 'Exercise enhanced precautions. There are some health risks, but travel is safe with additional measures.',
+        level: t('cards.health.level2'),
+        explanation: t('cards.health.exerciseIncreasedCaution'),
+        description: t('cards.health.exerciseIncreasedCaution') + '. There are some health risks, but travel is safe with additional measures.',
         color: 'text-yellow-600',
         bgColor: 'bg-yellow-50',
         borderColor: 'border-yellow-200'
@@ -38,9 +40,9 @@ export default function HealthSecurityCard({ healthAlerts, security }: HealthSec
     
     if (lowerMessage.includes('level 3') || lowerMessage.includes('warning level 3')) {
       return {
-        level: 'Level 3',
-        explanation: 'Avoid Nonessential Travel',
-        description: 'Avoid nonessential travel. There are significant health risks that require special consideration.',
+        level: t('cards.health.level3'),
+        explanation: t('cards.health.reconsiderTravel'),
+        description: t('cards.health.reconsiderTravel') + '. There are significant health risks that require special consideration.',
         color: 'text-orange-600',
         bgColor: 'bg-orange-50',
         borderColor: 'border-orange-200'
@@ -49,9 +51,9 @@ export default function HealthSecurityCard({ healthAlerts, security }: HealthSec
     
     if (lowerMessage.includes('level 4') || lowerMessage.includes('warning level 4')) {
       return {
-        level: 'Level 4',
-        explanation: 'Avoid All Travel',
-        description: 'Avoid all travel. There are extreme health risks that make the destination dangerous.',
+        level: t('cards.health.level4'),
+        explanation: t('cards.health.doNotTravel'),
+        description: t('cards.health.doNotTravel') + '. There are extreme health risks that make the destination dangerous.',
         color: 'text-red-600',
         bgColor: 'bg-red-50',
         borderColor: 'border-red-200'
@@ -60,9 +62,9 @@ export default function HealthSecurityCard({ healthAlerts, security }: HealthSec
     
     // Fallback for other cases
     return {
-      level: 'Information',
-      explanation: 'Check Recommendations',
-      description: 'Check specific CDC recommendations for this destination.',
+      level: t('cards.health.information'),
+      explanation: t('cards.health.checkRecommendations'),
+      description: t('cards.health.checkSpecificRecommendations'),
       color: 'text-gray-600',
       bgColor: 'bg-gray-50',
       borderColor: 'border-gray-200'
@@ -125,7 +127,7 @@ export default function HealthSecurityCard({ healthAlerts, security }: HealthSec
     <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
       <div className="flex items-center gap-2 mb-4">
         <Shield className="w-5 h-5 text-blue-600" />
-        <h3 className="font-semibold text-gray-800">🤧🤢 Health & 🔫 Security</h3>
+        <h3 className="font-semibold text-gray-800">🤧🤢 {t('cards.health.title')} & 🔫 {t('cards.security.title')}</h3>
       </div>
       
       <div className="space-y-4">
@@ -133,7 +135,7 @@ export default function HealthSecurityCard({ healthAlerts, security }: HealthSec
         <div className="space-y-2">
           <div className="flex items-center gap-2 mb-2">
             {getHealthStatusIcon()}
-            <h4 className="font-medium text-gray-800">Health Alerts</h4>
+            <h4 className="font-medium text-gray-800">{t('cards.health.title')}</h4>
           </div>
           
           {/* Explicación clara del nivel de salud */}
@@ -161,7 +163,7 @@ export default function HealthSecurityCard({ healthAlerts, security }: HealthSec
                 
                 {/* CDC Source Information */}
                 <div className="mt-3 pt-3 border-t border-gray-200">
-                  <p className="text-xs text-gray-600 font-medium mb-1">Source: CDC Travel Health</p>
+                  <p className="text-xs text-gray-600 font-medium mb-1">{t('cards.health.source')}</p>
                 </div>
               </div>
             );
@@ -172,24 +174,32 @@ export default function HealthSecurityCard({ healthAlerts, security }: HealthSec
         <div className="space-y-2">
           <div className="flex items-center gap-2 mb-2">
             {getSecurityStatusIcon()}
-            <h4 className="font-medium text-gray-800">Security Status</h4>
+            <h4 className="font-medium text-gray-800">{t('cards.security.status')}</h4>
           </div>
           
           <div className={`rounded-lg p-3 border ${getSecurityStatusColor()}`}>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-lg">{security.emoji}</span>
-              <span className="font-medium">{security.message}</span>
+              <span className="font-medium">
+                {security.message.includes('United States - Standard Security Precautions') 
+                  ? t('cards.health.unitedStatesStandardPrecautions')
+                  : security.message}
+              </span>
             </div>
             
             {security.details && (
-              <p className="text-sm opacity-90">{security.details}</p>
+              <p className="text-sm opacity-90">
+                {security.details.includes('The United States maintains high security standards') 
+                  ? t('cards.health.unitedStatesDescription')
+                  : security.details}
+              </p>
             )}
           </div>
         </div>
         
         <div className="pt-2 border-t border-gray-100">
           <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>Last updated</span>
+            <span>{t('cards.security.lastUpdated')}</span>
             <span>{isClient ? lastUpdated : '--/--/----'}</span>
           </div>
         </div>

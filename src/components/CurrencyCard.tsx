@@ -1,12 +1,14 @@
 import { CurrencyInfo } from '@/types';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { useFormattedDate } from '@/hooks/useClientDate';
+import { useTranslationContext } from '@/contexts/TranslationContext';
 
 interface CurrencyCardProps {
   currency: CurrencyInfo;
 }
 
 export default function CurrencyCard({ currency }: CurrencyCardProps) {
+  const { t, updateCounter } = useTranslationContext();
   const { formatted: lastUpdated, isClient } = useFormattedDate('date');
   
   const getTrendIcon = () => {
@@ -37,12 +39,12 @@ export default function CurrencyCard({ currency }: CurrencyCardProps) {
         <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
           <span className="text-lg">💰</span>
         </div>
-        <h3 className="font-semibold text-gray-800">Currency</h3>
+        <h3 className="font-semibold text-gray-800">{t('cards.currency.title')}</h3>
       </div>
       
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">Local Currency</span>
+          <span className="text-sm text-gray-600">{t('cards.currency.localCurrency')}</span>
           <div className="flex items-center gap-2">
             <span className="text-lg font-bold text-gray-800">{currency.symbol}</span>
             <span className="text-sm font-medium text-gray-700">{currency.code}</span>
@@ -50,14 +52,14 @@ export default function CurrencyCard({ currency }: CurrencyCardProps) {
         </div>
         
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">Exchange Rate</span>
+          <span className="text-sm text-gray-600">{t('cards.currency.exchangeRate')}</span>
           <span className="font-mono text-lg font-semibold text-gray-800">
             1 USD = {currency.symbol}{currency.rate.toFixed(2)}
           </span>
         </div>
         
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">Trend</span>
+          <span className="text-sm text-gray-600">{t('cards.currency.trend')}</span>
           <div className="flex items-center gap-2">
             {getTrendIcon()}
             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTrendColor()}`}>
@@ -68,7 +70,7 @@ export default function CurrencyCard({ currency }: CurrencyCardProps) {
         
         <div className="pt-2 border-t border-gray-100">
           <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>Last updated</span>
+            <span>{t('cards.currency.lastUpdated')}</span>
             <span>{isClient ? lastUpdated : '--/--/----'}</span>
           </div>
         </div>

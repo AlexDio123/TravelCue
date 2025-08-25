@@ -1,12 +1,14 @@
 import { WeatherInfo } from '@/types';
 import { Lightbulb, Thermometer } from 'lucide-react';
 import { useFormattedDate } from '@/hooks/useClientDate';
+import { useTranslationContext } from '@/contexts/TranslationContext';
 
 interface SeasonCardProps {
   weather: WeatherInfo;
 }
 
 export default function SeasonCard({ weather }: SeasonCardProps) {
+  const { t, updateCounter } = useTranslationContext();
   const { formatted: currentPeriod, isClient } = useFormattedDate('month-year');
   
   // Determine travel season based on weather data
@@ -60,7 +62,7 @@ export default function SeasonCard({ weather }: SeasonCardProps) {
     <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
       <div className="flex items-center gap-2 mb-3">
         <Thermometer className="w-5 h-5 text-orange-600" />
-        <h3 className="font-semibold text-gray-800">Weather & Travel</h3>
+        <h3 className="font-semibold text-gray-800">{t('cards.weather.title')}</h3>
       </div>
       
       <div className="space-y-3">
@@ -74,14 +76,14 @@ export default function SeasonCard({ weather }: SeasonCardProps) {
             </div>
           </div>
           <div className="text-right">
-            <p className="text-xs text-gray-600">Humidity: {weather.current.humidity}%</p>
-            <p className="text-xs text-gray-600">Wind: {weather.current.windSpeed} km/h</p>
+            <p className="text-xs text-gray-600">{t('cards.weather.humidity')}: {weather.current.humidity}%</p>
+            <p className="text-xs text-gray-600">{t('cards.weather.windSpeed')}: {weather.current.windSpeed} km/h</p>
           </div>
         </div>
 
         {/* Travel Season */}
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">Travel Season</span>
+          <span className="text-sm text-gray-600">{t('cards.weather.travelSeason')}</span>
           <div className="flex items-center gap-2">
             <span className="text-2xl">{travelTrend.emoji}</span>
             <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getSeasonColor()}`}>
@@ -95,7 +97,7 @@ export default function SeasonCard({ weather }: SeasonCardProps) {
           <div className="flex items-start gap-2">
             <Lightbulb className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-sm font-medium text-gray-800 mb-1">Travel Tip</p>
+              <p className="text-sm font-medium text-gray-800 mb-1">{t('cards.weather.travelTip')}</p>
               <p className="text-sm text-gray-600">{travelTrend.recommendation}</p>
             </div>
           </div>
@@ -103,16 +105,16 @@ export default function SeasonCard({ weather }: SeasonCardProps) {
         
         {/* Forecast */}
         <div className="flex items-center justify-between p-2 bg-green-50 rounded-lg">
-          <span className="text-sm text-gray-600">Today&apos;s Range</span>
+          <span className="text-sm text-gray-600">{t('cards.weather.todaysRange')}</span>
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-green-700">High: {weather.forecast.high}°C</span>
-            <span className="text-sm font-medium text-blue-700">Low: {weather.forecast.low}°C</span>
+            <span className="text-sm font-medium text-green-700">{t('cards.weather.high')}: {weather.forecast.high}°C</span>
+            <span className="text-sm font-medium text-blue-700">{t('cards.weather.low')}: {weather.forecast.low}°C</span>
           </div>
         </div>
         
         <div className="pt-2 border-t border-gray-100">
           <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>Current period</span>
+            <span>{t('cards.weather.currentPeriod')}</span>
             <span>{isClient ? currentPeriod : '---- ----'}</span>
           </div>
         </div>

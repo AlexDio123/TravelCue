@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, Plane, Loader2, MapPin } from 'lucide-react';
 import { searchGlobalDestination } from '@/services/api';
+import { useTranslationContext } from '@/contexts/TranslationContext';
 
 interface Destination {
   name: string;
@@ -19,12 +20,20 @@ interface SearchFormProps {
 }
 
 export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
+  const { t, updateCounter } = useTranslationContext();
   const [destination, setDestination] = useState('');
   const [suggestions, setSuggestions] = useState<Destination[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  // Debug translations
+  console.log('🌍 SearchForm - Translation function:', t);
+  console.log('🌍 SearchForm - Search placeholder:', t('common.searchPlaceholder'));
+  console.log('🌍 SearchForm - Search description:', t('common.searchDescription'));
+  console.log('🌍 SearchForm - Search button:', t('common.search'));
+  console.log('🌍 SearchForm - Update counter:', updateCounter);
 
   // Handle search input changes with real-time API suggestions
   const handleInputChange = (value: string) => {
@@ -102,7 +111,7 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
           <h1 className="text-4xl font-bold text-gray-800">TravelCue</h1>
         </div>
         <p className="text-xl text-gray-600">
-          Get a comprehensive overview of any destination for your next trip
+          {t('common.searchDescription')}
         </p>
       </div>
 
@@ -114,7 +123,7 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
             value={destination}
             onChange={(e) => handleInputChange(e.target.value)}
             onFocus={() => setShowSuggestions(true)}
-            placeholder="Enter destination (e.g., Barcelona, Spain)"
+            placeholder={t('common.searchPlaceholder')}
             className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors"
             style={{ 
               color: '#000000 !important',
@@ -133,7 +142,7 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
             {isLoading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              'Search'
+              t('common.search')
             )}
           </button>
         </div>
@@ -144,7 +153,7 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
             {isSearching ? (
               <div className="flex items-center justify-center px-4 py-3 text-gray-600">
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                Searching...
+                {t('common.searching')}
               </div>
             ) : suggestions.length > 0 ? (
               suggestions.map((suggestion, index) => (
@@ -162,7 +171,7 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
               ))
             ) : destination.length >= 2 ? (
               <div className="px-4 py-3 text-gray-600 text-center">
-                No destinations found
+                {t('common.noDestinationsFound')}
               </div>
             ) : null}
           </div>
@@ -171,7 +180,7 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
 
       {/* Quick Popular Destinations (still useful for inspiration) */}
       <div className="mt-6">
-        <p className="text-center text-gray-700 mb-3 font-medium">Popular destinations:</p>
+        <p className="text-center text-gray-700 mb-3 font-medium">{t('common.popularDestinations')}:</p>
         <div className="flex flex-wrap justify-center gap-2">
           {['Barcelona, Spain', 'Tokyo, Japan', 'New York, USA', 'Bali, Indonesia', 'Paris, France'].map((suggestion, index) => (
             <button

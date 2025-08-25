@@ -3,6 +3,7 @@ import { LocationSnapshot, TimezoneInfo, CurrencyInfo, WeatherInfo, EventInfo, A
 import { API_CONFIG, FALLBACK_DATA } from '@/config/apis';
 import { COUNTRY_CURRENCY_MAP, CURRENCY_SYMBOL_MAP } from '@/config/constants';
 import { getCDCSlug } from '../config/cdc-slugs';
+import { getSecurityMessage } from '@/constants/securityMessages';
 
 // Mock data for components that don't have free APIs
 const mockData = {
@@ -1146,7 +1147,7 @@ function parseServerSideCDCData(healthData: {
 
 
 // Fetch real security data from US State Department
-export const fetchSecurityData = async (destination: string, detectedCountry?: string): Promise<SecurityInfo> => {
+export const fetchSecurityData = async (destination: string, detectedCountry?: string, locale: string = 'en'): Promise<SecurityInfo> => {
   try {
     console.log('🛡️ Fetching security data from server-side State Department API...');
 
@@ -1164,8 +1165,8 @@ export const fetchSecurityData = async (destination: string, detectedCountry?: s
       console.log('🇺🇸 United States detected - using standard security message');
       return {
         status: 'safe',
-        message: 'United States - Standard Security Precautions',
-        details: 'The United States maintains high security standards. Follow standard travel precautions as you would in any developed country. No specific security alerts are currently active.',
+        message: getSecurityMessage(locale, 'unitedStates').message,
+        details: getSecurityMessage(locale, 'unitedStates').details,
         emoji: '🛡️'
       };
     }

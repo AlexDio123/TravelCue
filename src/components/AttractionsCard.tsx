@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { AttractionInfo } from '@/types';
 import { MapPin, Navigation, ChevronDown, ChevronUp } from 'lucide-react';
+import { useTranslationContext } from '@/contexts/TranslationContext';
 
 interface AttractionsCardProps {
   attractions: AttractionInfo[];
 }
 
 export default function AttractionsCard({ attractions }: AttractionsCardProps) {
+  const { t, updateCounter } = useTranslationContext();
   const [isExpanded, setIsExpanded] = useState(false);
   
   // Show only 4 attractions initially, or all if expanded
@@ -38,7 +40,7 @@ export default function AttractionsCard({ attractions }: AttractionsCardProps) {
     <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
       <div className="flex items-center gap-2 mb-3">
         <MapPin className="w-5 h-5 text-green-600" />
-        <h3 className="font-semibold text-gray-800">🏛️ Nearby Attractions</h3>
+        <h3 className="font-semibold text-gray-800">{t('cards.attractions.title')}</h3>
       </div>
       
       <div className="space-y-3">
@@ -84,12 +86,12 @@ export default function AttractionsCard({ attractions }: AttractionsCardProps) {
                 {isExpanded ? (
                   <>
                     <ChevronUp className="w-4 h-4" />
-                    Show Less
+                    {t('cards.attractions.collapse')}
                   </>
                 ) : (
                   <>
                     <ChevronDown className="w-4 h-4" />
-                    Show {attractions.length - 4} More Attractions
+                    {t('cards.attractions.expand')} ({attractions.length - 4})
                   </>
                 )}
               </button>
@@ -98,15 +100,15 @@ export default function AttractionsCard({ attractions }: AttractionsCardProps) {
         ) : (
           <div className="text-center py-6 text-gray-500">
             <MapPin className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-            <p className="text-sm">No tourist attractions found for this place</p>
-            <p className="text-xs">Check local tourism websites for recommendations</p>
+            <p className="text-sm">{t('cards.attractions.noAttractions')}</p>
+                                    <p className="text-xs">{t('cards.attractions.checkLocal')}</p>
           </div>
         )}
         
         <div className="pt-2 border-t border-gray-100">
           <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>Attractions found</span>
-            <span>{attractions.length} nearby</span>
+            <span>{t('cards.attractions.attractionsFound')}</span>
+                                    <span>{attractions.length} {t('cards.attractions.nearby')}</span>
           </div>
         </div>
       </div>
