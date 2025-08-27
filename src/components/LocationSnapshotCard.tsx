@@ -7,6 +7,7 @@ import AttractionsCard from './AttractionsCard';
 import HealthSecurityCard from './HealthSecurityCard';
 import STRAvailabilityCard from './STRAvailabilityCard';
 import { useFormattedDate } from '@/hooks/useClientDate';
+import { useTranslation } from '@/hooks/useTranslation';
 import { MapPin, Clock } from 'lucide-react';
 
 interface LocationSnapshotCardProps {
@@ -15,6 +16,7 @@ interface LocationSnapshotCardProps {
 
 export default function LocationSnapshotCard({ snapshot }: LocationSnapshotCardProps) {
   const { formatted: lastUpdated, isClient } = useFormattedDate('datetime');
+  const { t } = useTranslation();
   
   return (
     <div className="max-w-7xl mx-auto p-6">
@@ -25,7 +27,7 @@ export default function LocationSnapshotCard({ snapshot }: LocationSnapshotCardP
           <h1 className="text-3xl font-bold">{snapshot.destination}</h1>
         </div>
         <p className="text-blue-100 text-lg">
-          Complete travel overview • Last updated {isClient ? lastUpdated : '--/--/---- --:--'}
+          {t('common.completeTravelOverview')} • {t('common.lastUpdated')} {isClient ? lastUpdated : '--/--/---- --:--'}
         </p>
       </div>
       
@@ -56,11 +58,10 @@ export default function LocationSnapshotCard({ snapshot }: LocationSnapshotCardP
           <div className="text-center text-gray-500">
             <div className="flex items-center justify-center gap-2 mb-2">
               <Clock className="w-4 h-4" />
-              <span className="text-sm">Data refreshed automatically</span>
+              <span className="text-sm">{t('common.dataRefreshedAutomatically')}</span>
             </div>
             <p className="text-xs">
-              This overview provides a comprehensive snapshot of {snapshot.destination} for travelers. 
-              Information is gathered from multiple sources and updated regularly.
+              {t('common.overviewDescription').replace('{destination}', snapshot.destination)}
             </p>
           </div>
         </div>

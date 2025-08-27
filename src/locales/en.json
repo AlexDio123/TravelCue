@@ -15,6 +15,10 @@
     "fetchingData": "Fetching real-time travel information from multiple sources",
     "whatYouGet": "What you'll get with TravelCue",
     "comprehensiveOverview": "A comprehensive overview of any destination including weather, events, safety, and more",
+    "completeTravelOverview": "Complete travel overview",
+    "lastUpdated": "Last updated",
+    "dataRefreshedAutomatically": "Data refreshed automatically",
+    "overviewDescription": "This overview provides a comprehensive snapshot of {destination} for travelers. Information is gathered from multiple sources and updated regularly.",
     "features": {
       "timezone": "Timezone & Time",
       "timezoneDesc": "Current time and time difference",

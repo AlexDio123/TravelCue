@@ -44,7 +44,7 @@ export function useTranslation() {
     }
   }, [locale, updateCounter]);
 
-  const getText = useCallback((key: string, defaultValue?: string): string => {
+  const getText = useCallback((key: string, defaultValue?: string, variables?: Record<string, string>): string => {
     const keys = key.split('.');
     let value: unknown = currentTranslations;
     
@@ -57,7 +57,15 @@ export function useTranslation() {
       }
     }
     
-    const result = typeof value === 'string' ? value : defaultValue || key;
+    let result = typeof value === 'string' ? value : defaultValue || key;
+    
+    // Replace variables in the translation string
+    if (variables && typeof result === 'string') {
+      Object.entries(variables).forEach(([varKey, varValue]) => {
+        result = result.replace(new RegExp(`{${varKey}}`, 'g'), varValue);
+      });
+    }
+    
     return result;
   }, [currentTranslations, updateCounter]);
 

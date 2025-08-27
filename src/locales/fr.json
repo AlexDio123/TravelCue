@@ -15,6 +15,10 @@
     "fetchingData": "Récupération d'informations de voyage en temps réel depuis plusieurs sources",
     "whatYouGet": "Ce que vous obtiendrez avec TravelCue",
     "comprehensiveOverview": "Une vue d'ensemble complète de n'importe quelle destination incluant la météo, les événements, la sécurité et plus",
+    "completeTravelOverview": "Vue d'ensemble complète du voyage",
+    "lastUpdated": "Dernière mise à jour",
+    "dataRefreshedAutomatically": "Données actualisées automatiquement",
+    "overviewDescription": "Cette vue d'ensemble fournit un aperçu complet de {destination} pour les voyageurs. Les informations sont collectées auprès de plusieurs sources et mises à jour régulièrement.",
     "features": {
       "timezone": "Fuseau Horaire et Heure",
       "timezoneDesc": "Heure actuelle et différence horaire",

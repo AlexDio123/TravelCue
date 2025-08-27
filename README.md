@@ -83,10 +83,38 @@ src/
 
 ## 🔌 API Integration
 
+### Environment Variables Setup
+
+**⚠️ IMPORTANT: You must set up your API keys before running the app!**
+
+1. Copy the environment template:
+```bash
+cp env.example .env.local
+```
+
+2. Fill in your API keys in `.env.local`:
+```bash
+# OpenWeatherMap API (Required for weather data)
+NEXT_PUBLIC_OPENWEATHER_API_KEY=your_openweather_api_key_here
+
+# PredictHQ API (Required for real events data)
+NEXT_PUBLIC_PREDICTHQ_API_KEY=your_predicthq_api_key_here
+
+# OpenCage Geocoding API (Required for location search)
+NEXT_PUBLIC_OPENCAGE_API_KEY=your_opencage_api_key_here
+```
+
+3. Get your free API keys:
+- **OpenWeatherMap**: [https://openweathermap.org/api](https://openweathermap.org/api) (Free tier: 1,000 calls/day)
+- **OpenCage**: [https://opencagedata.com/](https://opencagedata.com/) (Free tier: 2,500 calls/day)
+- **PredictHQ**: [https://developer.predicthq.com/](https://developer.predicthq.com/) (Free tier available)
+
 ### External APIs Used
-- **WorldTime API**: Timezone and current time data
-- **ExchangeRate API**: Currency conversion rates
 - **OpenWeatherMap API**: Real-time weather information and forecasts (✅ Integrated)
+- **OpenCage Geocoding API**: Location search and coordinates (✅ Integrated)
+- **PredictHQ API**: Real events worldwide (✅ Integrated)
+- **WorldTime API**: Timezone and current time data (✅ Integrated)
+- **ExchangeRate API**: Currency conversion rates (✅ Integrated)
 
 ### Real vs Mock Data
 **Real Data (APIs Integrated):**

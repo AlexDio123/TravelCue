@@ -3,7 +3,7 @@ export const API_CONFIG = {
   // OpenWeatherMap API
   OPENWEATHER: {
     BASE_URL: 'https://api.openweathermap.org/data/2.5',
-    API_KEY: process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY || '89a7203efe73d449bdc59a1df64ce650',
+    API_KEY: process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY,
     ENDPOINTS: {
       CURRENT_WEATHER: '/weather',
       FORECAST: '/forecast'
@@ -29,7 +29,7 @@ export const API_CONFIG = {
   // OpenCage Geocoding API for global search and country detection
   OPENCAGE: {
     BASE_URL: 'https://api.opencagedata.com/geocode/v1',
-    API_KEY: process.env.NEXT_PUBLIC_OPENCAGE_API_KEY || '74ecbe1c772e4786b69adbb3fc4f724a',
+    API_KEY: process.env.NEXT_PUBLIC_OPENCAGE_API_KEY,
     ENDPOINTS: {
       FORWARD: '/json', // Forward geocoding (place name → coordinates + metadata)
       REVERSE: '/json'  // Reverse geocoding (coordinates → place metadata)
@@ -39,7 +39,7 @@ export const API_CONFIG = {
   // PredictHQ API for real events worldwide
   PREDICTHQ: {
     BASE_URL: 'https://api.predicthq.com/v1',
-    API_KEY: process.env.NEXT_PUBLIC_PREDICTHQ_API_KEY || 'wI_fKzEcKWp21C2ZOno8Nz1TL2A_p30bJ5Ii7JKA',
+    API_KEY: process.env.NEXT_PUBLIC_PREDICTHQ_API_KEY,
     ENDPOINTS: {
       EVENTS: '/events'
     }

@@ -46,11 +46,16 @@ export const searchGlobalDestination = async (query: string): Promise<Array<{nam
   try {
     // Using OpenCage Geocoding API for destination search
     
-    // OpenCage Geocoding API with your real key (free tier: 2,500 requests/day)
+    // Check if OpenCage API key is available
+    if (!API_CONFIG.OPENCAGE.API_KEY) {
+      throw new Error('OpenCage API key not configured. Please set NEXT_PUBLIC_OPENCAGE_API_KEY in your environment variables.');
+    }
+    
+    // OpenCage Geocoding API with environment variable key (free tier: 2,500 requests/day)
     const response = await apiClient.get('https://api.opencagedata.com/geocode/v1/json', {
       params: {
         q: query,
-        key: '74ecbe1c772e4786b69adbb3fc4f724a',
+        key: API_CONFIG.OPENCAGE.API_KEY,
         limit: 10,
         no_annotations: 1,
         language: 'en'
@@ -322,7 +327,10 @@ export const fetchAttractionsData = async (destination: string, coordinates?: {l
 // Fetch real events from PredictHQ API
 export const fetchEventsData = async (destination: string): Promise<EventInfo[]> => {
   try {
-
+    // Check if PredictHQ API key is available
+    if (!API_CONFIG.PREDICTHQ.API_KEY) {
+      throw new Error('PredictHQ API key not configured. Please set NEXT_PUBLIC_PREDICTHQ_API_KEY in your environment variables.');
+    }
     
     // Extract city name for search
     const city = destination.split(',')[0].trim();
@@ -1202,10 +1210,15 @@ const getDestinationCoordinates = async (destination: string): Promise<{lat: num
 // Fetch weather data from OpenWeatherMap API
 export const fetchWeatherData = async (destination: string): Promise<WeatherInfo> => {
   try {
+    // Check if OpenWeather API key is available
+    if (!API_CONFIG.OPENWEATHER.API_KEY) {
+      throw new Error('OpenWeather API key not configured. Please set NEXT_PUBLIC_OPENWEATHER_API_KEY in your environment variables.');
+    }
+    
     // Get coordinates for the destination using geocoding
     const coords = await getDestinationCoordinates(destination);
     
-    // OpenWeatherMap API call with real API key
+    // OpenWeatherMap API call with environment variable key
     const response = await apiClient.get(
       `${API_CONFIG.OPENWEATHER.BASE_URL}${API_CONFIG.OPENWEATHER.ENDPOINTS.CURRENT_WEATHER}?lat=${coords.lat}&lon=${coords.lon}&appid=${API_CONFIG.OPENWEATHER.API_KEY}&units=metric`
     );
