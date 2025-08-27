@@ -16,7 +16,7 @@ const TranslationContext = createContext<TranslationContextType | undefined>(und
 export function TranslationProvider({ children }: { children: ReactNode }) {
   const translationHook = useTranslation();
 
-  console.log('🔄 TranslationContext - Provider rendered with locale:', translationHook.locale, 'update counter:', translationHook.updateCounter);
+  
 
   return (
     <TranslationContext.Provider value={translationHook}>

@@ -23,26 +23,22 @@ export function useTranslation() {
   useEffect(() => {
     // Load saved locale from localStorage
     const savedLocale = localStorage.getItem('locale') as Locale;
-    console.log('🌍 Translation Hook - Saved locale:', savedLocale);
+
     
     if (savedLocale && translations[savedLocale]) {
       setLocale(savedLocale);
       setCurrentTranslations(translations[savedLocale]);
-      console.log('🌍 Translation Hook - Loaded saved locale:', savedLocale);
     } else {
-      console.log('🌍 Translation Hook - Using default locale: en');
+      // Using default locale: en
     }
   }, []);
 
   const changeLocale = useCallback((newLocale: Locale) => {
-    console.log('🌍 Translation Hook - Changing locale from', locale, 'to', newLocale);
-    
     if (translations[newLocale]) {
       setLocale(newLocale);
       setCurrentTranslations(translations[newLocale]);
       localStorage.setItem('locale', newLocale);
       setUpdateCounter(prev => prev + 1);
-      console.log('🌍 Translation Hook - Locale changed successfully, update counter:', updateCounter + 1);
     } else {
       console.error('🌍 Translation Hook - Invalid locale:', newLocale);
     }
@@ -62,11 +58,10 @@ export function useTranslation() {
     }
     
     const result = typeof value === 'string' ? value : defaultValue || key;
-    console.log('🌍 Translation Hook - Getting text for key:', key, 'result:', result, 'update counter:', updateCounter);
     return result;
   }, [currentTranslations, updateCounter]);
 
-  console.log('🌍 Translation Hook - Hook rendered with locale:', locale, 'update counter:', updateCounter);
+
 
   return {
     locale,

@@ -64,19 +64,7 @@ export const searchGlobalDestination = async (query: string): Promise<Array<{nam
       const destinations = response.data.results.map((result: { components: { city?: string; town?: string; village?: string; county?: string; country?: string; state?: string; province?: string; region?: string; district?: string }; geometry?: { lat: number; lng: number } }) => {
         const components = result.components;
         
-        // Debug: Log what components we're getting
-        console.log('🔍 OpenCage components for destination:', {
-          query: query,
-          components: components,
-          hasCity: !!components.city,
-          hasTown: !!components.town,
-          hasVillage: !!components.village,
-          hasCounty: !!components.county,
-          hasState: !!components.state,
-          hasProvince: !!components.province,
-          hasRegion: !!components.region,
-          hasDistrict: !!components.district
-        });
+
         
         const coordinates = {
           lat: result.geometry?.lat || 0,
@@ -147,21 +135,17 @@ export const fetchAttractionsData = async (destination: string, coordinates?: {l
         const searchResults = await searchGlobalDestination(destination);
         if (searchResults.length > 0) {
           coordinates = searchResults[0].coordinates;
-          console.log('🏛️ Got coordinates from OpenCage for attractions:', coordinates);
         }
       } catch (_) {
-        console.log('⚠️ Could not get coordinates for attractions search');
         return [];
       }
     }
     
     if (!coordinates || !coordinates.lat || !coordinates.lon) {
-      console.log('⚠️ No valid coordinates for attractions search');
       return [];
     }
     
     // Step 2: Use OpenStreetMap Overpass API for reliable attractions data
-    console.log('🗺️ Fetching attractions from OpenStreetMap Overpass API...');
     
     try {
               // Build Overpass query to find attractions within 30km radius (excluding hotels/residential/cinemas)
@@ -315,12 +299,11 @@ export const fetchAttractionsData = async (destination: string, coordinates?: {l
           .slice(0, 5); // Return top 5 attractions
         
         if (attractions.length > 0) {
-          console.log(`✅ Found ${attractions.length} real attractions from OpenStreetMap`);
           return attractions;
         }
       }
     } catch (overpassError) {
-      console.log('⚠️ OpenStreetMap Overpass API failed:', overpassError);
+      // OpenStreetMap Overpass API failed, will use fallback
     }
     
     // Step 3: No attractions available
@@ -339,7 +322,7 @@ export const fetchAttractionsData = async (destination: string, coordinates?: {l
 // Fetch real events from PredictHQ API
 export const fetchEventsData = async (destination: string): Promise<EventInfo[]> => {
   try {
-    console.log('🎭 Fetching real events from PredictHQ API...');
+
     
     // Extract city name for search
     const city = destination.split(',')[0].trim();
@@ -350,7 +333,7 @@ export const fetchEventsData = async (destination: string): Promise<EventInfo[]>
       const searchResults = await searchGlobalDestination(destination);
       if (searchResults.length > 0) {
         coordinates = searchResults[0].coordinates;
-        console.log('📍 Got coordinates for PredictHQ events search:', coordinates);
+
       }
     } catch (_) {
       // Could not get coordinates for PredictHQ events search
@@ -371,7 +354,7 @@ export const fetchEventsData = async (destination: string): Promise<EventInfo[]>
       'category': 'community,concerts,conferences,expos,festivals,performing-arts,sports'
     });
     
-    console.log('🌐 Calling PredictHQ API for events...');
+    
     const response = await fetch(`${predicthqUrl}?${params}`, {
       headers: {
         'Authorization': `Bearer ${API_CONFIG.PREDICTHQ.API_KEY}`,
@@ -541,13 +524,13 @@ export const fetchTimezoneData = async (destination: string): Promise<TimezoneIn
           const result = reverseResponse.data.results[0];
           
           // OpenCage response components and annotations available
-          console.log('🌍 OpenCage response for timezone:', result.annotations);
+    
           
           // OpenCage provides timezone info in the annotations
           if (result.annotations && result.annotations.timezone) {
             const timezoneName = result.annotations.timezone.name;
             const timezoneOffset = result.annotations.timezone.offset_sec;
-            console.log('✅ Found timezone in OpenCage:', timezoneName, 'offset:', timezoneOffset);
+  
             
             // Calculate timezone info directly from OpenCage data
             if (timezoneOffset !== undefined) {
@@ -557,7 +540,7 @@ export const fetchTimezoneData = async (destination: string): Promise<TimezoneIn
                 diff: offsetHours,
                 dst: false // OpenCage doesn't provide DST info, but we can calculate current time
               };
-              console.log('✅ Timezone data calculated from OpenCage:', timezoneInfo);
+      
             } else {
               // Fallback: Try WorldTime API (but it often has CORS issues)
               try {
@@ -727,10 +710,10 @@ export const fetchTimezoneData = async (destination: string): Promise<TimezoneIn
 // Fetch currency data from ExchangeRate API with dynamic country detection
 export const fetchCurrencyData = async (destination: string): Promise<CurrencyInfo> => {
   try {
-    console.log('💰 Fetching currency data for destination:', destination);
+
     
     // Step 1: Use OpenCage API to detect the country
-    console.log('🌍 Detecting country using OpenCage API...');
+    
     
     let country = 'Unknown';
     let countryCode = 'US';
@@ -755,33 +738,33 @@ export const fetchCurrencyData = async (destination: string): Promise<CurrencyIn
         if (components.country) {
           country = components.country;
           countryCode = components.country_code?.toUpperCase() || 'US';
-          console.log('✅ Country detected via OpenCage:', country, `(${countryCode})`);
+  
           
           // Convert country code to currency code
           // Most countries use their country code as currency code, but some are different
           // Get currency code from country code mapping
           if (COUNTRY_CURRENCY_MAP[countryCode]) {
             currencyCode = COUNTRY_CURRENCY_MAP[countryCode];
-            console.log(`💱 Currency mapped from country code: ${countryCode} → ${currencyCode}`);
+  
           } else {
             // Fallback: try to use country code as currency code
             currencyCode = countryCode;
-            console.log(`⚠️ No currency mapping for ${countryCode}, using country code as currency: ${currencyCode}`);
+
           }
           
-          console.log(`💱 Final currency: ${country} (${countryCode}) → ${currencyCode}`);
+  
         } else {
-          console.log('⚠️ No country found in OpenCage response, using USD as fallback');
+  
         }
       } else {
-        console.log('⚠️ No results from OpenCage API, using USD as fallback');
+
       }
     } catch (opencageError) {
-      console.log('⚠️ OpenCage API failed, using USD as fallback:', opencageError);
+      
     }
     
     // Step 2: Get real exchange rate from ExchangeRate API
-    console.log('💰 Getting real exchange rate from ExchangeRate API...');
+    
     
     let rate = 1.0;
     
@@ -789,27 +772,22 @@ export const fetchCurrencyData = async (destination: string): Promise<CurrencyIn
       const response = await apiClient.get('https://api.exchangerate-api.com/v4/latest/USD');
       const data = response.data;
       
-      console.log('📡 ExchangeRate API response received:', {
-        hasData: !!data,
-        hasRates: !!(data && data.rates),
-        currencyCode,
-        rateExists: !!(data && data.rates && data.rates[currencyCode])
-      });
+
       
       if (data && data.rates && data.rates[currencyCode]) {
         rate = data.rates[currencyCode];
-        console.log(`✅ Real exchange rate from API: ${currencyCode} = ${rate}`);
+
         
         // Set appropriate symbol based on currency code
         currencySymbol = CURRENCY_SYMBOL_MAP[currencyCode] || '$'; // Default to $ if not found
       } else {
-        console.log(`⚠️ Currency ${currencyCode} not found in API, using USD`);
+
         currencyCode = 'USD';
         currencySymbol = '$';
         rate = 1.0;
       }
     } catch (apiError) {
-      console.log('⚠️ ExchangeRate API failed, using USD as fallback:', apiError);
+
       currencyCode = 'USD';
       currencySymbol = '$';
       rate = 1.0;
@@ -819,7 +797,7 @@ export const fetchCurrencyData = async (destination: string): Promise<CurrencyIn
     const trend = Math.random() > 0.5 ? 'up' : 'down';
     const trendPercentage = Math.random() * 5;
     
-    console.log(`✅ Currency data fetched: ${currencyCode} = ${rate} (${country} - ${countryCode})`);
+
     
     return {
       code: currencyCode,
@@ -845,11 +823,11 @@ export const fetchCurrencyData = async (destination: string): Promise<CurrencyIn
 // Fetch real health data from server-side CDC API
 export const fetchHealthData = async (destination: string, detectedCountry?: string): Promise<HealthAlert> => {
   try {
-    console.log('🏥 Fetching health data from server-side CDC API...');
+
 
     // Use detected country from OpenCage if available, otherwise extract from destination
     const country = detectedCountry || destination.split(',').pop()?.trim() || destination;
-    console.log(`🏥 Looking for health data for: ${country} (from ${detectedCountry ? 'OpenCage' : 'destination parsing'})`);
+
     
     // Special handling for United States
     if (country.toLowerCase().includes('united states') || 
@@ -858,7 +836,7 @@ export const fetchHealthData = async (destination: string, detectedCountry?: str
         destination.toLowerCase().includes('united states') ||
         destination.toLowerCase().includes('usa') ||
         destination.toLowerCase().includes('us')) {
-      console.log('🇺🇸 United States detected - using standard health message');
+
       return {
         status: 'safe',
         message: 'United States - Standard Health Precautions',
@@ -869,11 +847,11 @@ export const fetchHealthData = async (destination: string, detectedCountry?: str
 
     // Get CDC slug for the country
     const cdcSlug = getCDCSlug(country);
-    console.log(`🏥 CDC Slug: ${cdcSlug}`);
+
 
     // Call our server-side API route (no CORS issues!)
     const apiUrl = `/api/health/${cdcSlug}`;
-    console.log(`🏥 Calling server-side API: ${apiUrl}`);
+
 
     const response = await fetch(apiUrl, {
       method: 'GET',
@@ -883,21 +861,19 @@ export const fetchHealthData = async (destination: string, detectedCountry?: str
     });
 
     if (!response.ok) {
-      console.log(`⚠️ Server-side API returned status: ${response.status}`);
       throw new Error(`API returned status ${response.status}`);
     }
 
     const healthData = await response.json();
-    console.log(`✅ Server-side CDC data received:`, healthData);
+    
 
     // Parse the server-side data to extract health information
     const parsedHealthData = parseServerSideCDCData(healthData, country);
 
     if (parsedHealthData) {
-      console.log(`🏥 Parsed health data for ${country}:`, parsedHealthData);
+
       return parsedHealthData;
     } else {
-      console.log(`⚠️ No health data could be parsed for ${country}`);
       return {
         status: 'safe',
         message: 'Health data unavailable',
@@ -938,28 +914,16 @@ function parseServerSideCDCData(healthData: {
   rawHtml: string;
 }, country: string): HealthAlert | null {
   try {
-    console.log(`🏥 Parsing server-side CDC data for ${country}:`, {
-      title: healthData.title,
-      heading: healthData.heading,
-      contentLength: healthData.content.length,
-      hasVaccines: healthData.hasVaccines,
-      hasNotices: healthData.hasNotices,
-      hasHealthAlerts: healthData.hasHealthAlerts,
-      hasTravelNotices: healthData.hasTravelNotices,
-      mainContentLength: healthData.mainContent?.length || 0,
-      sidebarContentLength: healthData.sidebarContent?.length || 0,
-      cdcContentLength: healthData.cdcContent?.length || 0,
-      cdcLevelsFromBackend: healthData.cdcLevels?.length || 0
-    });
+
     
     if (!healthData || !healthData.content) {
-      console.log(`⚠️ No content in server-side data for ${country}`);
+
       return null;
     }
 
     // Use backend-extracted CDC levels if available (more accurate)
     if (healthData.cdcLevels && healthData.cdcLevels.length > 0) {
-      console.log(`🏥 Using backend-extracted CDC levels:`, healthData.cdcLevels);
+
       
       const levels = healthData.cdcLevels.map(l => l.level).sort();
       const highestLevel = Math.max(...levels.map(Number));
@@ -991,13 +955,7 @@ function parseServerSideCDCData(healthData: {
         details += ` - ${levelDetails}`;
       }
       
-      console.log(`🏥 Final health status from backend levels for ${country}:`, {
-        status: healthStatus,
-        message,
-        details,
-        cdcLevels: levels,
-        highestLevel
-      });
+
       
       return {
         status: healthStatus,
@@ -1008,7 +966,6 @@ function parseServerSideCDCData(healthData: {
     }
 
     // Fallback to content analysis if no backend levels
-    console.log(`⚠️ No backend CDC levels, falling back to content analysis...`);
     
     // Combine all content sources for comprehensive analysis
     const allContent = [
@@ -1025,11 +982,11 @@ function parseServerSideCDCData(healthData: {
     
     // Check if the content is relevant to the country
     if (!allContent.includes(countryLower)) {
-      console.log(`⚠️ Content doesn't contain country name for ${country}`);
+
       return null;
     }
 
-    console.log(`🏥 Analyzing ${allContent.length} characters of combined content for CDC levels...`);
+
 
     let healthStatus = 'safe';
     let message = 'No specific health alerts';
@@ -1064,14 +1021,14 @@ function parseServerSideCDCData(healthData: {
     for (const pattern of levelPatterns) {
       if (pattern.pattern.test(allContent)) {
         cdcLevels.push(pattern.levelNum);
-        console.log(`🏥 Found CDC level ${pattern.levelNum} in server-side data`);
+
       }
     }
 
     cdcLevels = [...new Set(cdcLevels)].sort();
 
     if (cdcLevels.length > 0) {
-      console.log(`🏥 Found ${cdcLevels.length} CDC levels: ${cdcLevels.join(', ')}`);
+
       const highestLevel = Math.max(...cdcLevels.map(Number));
       
       if (highestLevel === 3) {
@@ -1088,7 +1045,7 @@ function parseServerSideCDCData(healthData: {
         details = `Multiple health risks detected. Level ${highestLevel} requires standard precautions.`;
       }
     } else {
-      console.log(`⚠️ No CDC levels found, checking specific health risks...`);
+
       
       // Check for specific health risks
       if (allContent.includes('dengue') || allContent.includes('malaria')) {
@@ -1121,13 +1078,7 @@ function parseServerSideCDCData(healthData: {
       details += ` - ${additionalDetails.join(', ')}`;
     }
 
-    console.log(`🏥 Final health status from content analysis for ${country}:`, {
-      status: healthStatus,
-      message,
-      details,
-      cdcLevels: cdcLevels.length > 0 ? cdcLevels : 'None detected',
-      contentAnalyzed: `${allContent.length} characters`
-    });
+
 
     return {
       status: healthStatus as 'safe' | 'warning' | 'alert' | 'caution',
@@ -1149,11 +1100,11 @@ function parseServerSideCDCData(healthData: {
 // Fetch real security data from US State Department
 export const fetchSecurityData = async (destination: string, detectedCountry?: string, locale: string = 'en'): Promise<SecurityInfo> => {
   try {
-    console.log('🛡️ Fetching security data from server-side State Department API...');
+
 
     // Use detected country from OpenCage if available, otherwise extract from destination
     const country = detectedCountry || destination.split(',').pop()?.trim() || destination;
-    console.log(`🛡️ Looking for security data for: ${country} (from ${detectedCountry ? 'OpenCage' : 'destination parsing'})`);
+
     
     // Special handling for United States
     if (country.toLowerCase().includes('united states') || 
@@ -1162,7 +1113,7 @@ export const fetchSecurityData = async (destination: string, detectedCountry?: s
         destination.toLowerCase().includes('united states') ||
         destination.toLowerCase().includes('usa') ||
         destination.toLowerCase().includes('us')) {
-      console.log('🇺🇸 United States detected - using standard security message');
+
       return {
         status: 'safe',
         message: getSecurityMessage(locale, 'unitedStates').message,
@@ -1173,11 +1124,11 @@ export const fetchSecurityData = async (destination: string, detectedCountry?: s
 
     // Convert country name to slug format for the API
     const countrySlug = country.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    console.log(`🛡️ Country slug generated: ${countrySlug}`);
+
 
     // Call our server-side API route (no CORS issues!)
     const apiUrl = `/api/security/${countrySlug}`;
-    console.log(`🛡️ Calling server-side security API: ${apiUrl}`);
+
 
     const response = await fetch(apiUrl, {
       method: 'GET',
@@ -1186,19 +1137,15 @@ export const fetchSecurityData = async (destination: string, detectedCountry?: s
       }
     });
 
-    if (!response.ok) {
-      console.log(`⚠️ Server-side security API returned status: ${response.status}`);
-      throw new Error(`API returned status ${response.status}`);
-    }
+          if (!response.ok) {
+        throw new Error(`API returned status ${response.status}`);
+      }
 
     const securityData = await response.json();
-    console.log(`✅ Server-side security data received:`, securityData);
 
     if (securityData.data) {
-      console.log(`🛡️ Security data found for ${country}:`, securityData.data);
       return securityData.data;
     } else {
-      console.log(`⚠️ No security data found for ${country}`);
       return {
         status: 'safe',
         message: 'Security data unavailable',
@@ -1230,7 +1177,7 @@ const getDestinationCoordinates = async (destination: string): Promise<{lat: num
     if (searchResults.length > 0) {
       const firstResult = searchResults[0];
       if (firstResult.coordinates.lat && firstResult.coordinates.lon) {
-        console.log('✅ Coordinates obtained from OpenCage search:', firstResult.coordinates);
+
         return firstResult.coordinates;
       }
     }
@@ -1348,7 +1295,7 @@ export const fetchLocationSnapshot = async (destination: string): Promise<Locati
       const firstResult = searchResults[0];
       if (firstResult.country) {
         detectedCountry = firstResult.country;
-        console.log(`🌍 Country detected for health/security: ${detectedCountry}`);
+
       }
     }
   } catch (_) {

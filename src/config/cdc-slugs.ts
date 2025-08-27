@@ -147,13 +147,13 @@ export function getCDCSlug(country: string): string {
   // Partial match - find the best match
   for (const [key, slug] of Object.entries(CDC_COUNTRY_SLUGS)) {
     if (countryLower.includes(key) || key.includes(countryLower)) {
-      console.log(`🔄 CDC slug mapping: "${country}" → "${slug}"`);
+  
       return slug;
     }
   }
   
   // If no match found, convert to kebab-case as fallback
   const fallbackSlug = countryLower.replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-  console.log(`⚠️ No CDC slug found for "${country}", using fallback: "${fallbackSlug}"`);
+  
   return fallbackSlug;
 }
