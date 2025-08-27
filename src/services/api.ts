@@ -4,6 +4,7 @@ import { API_CONFIG, FALLBACK_DATA } from '@/config/apis';
 import { COUNTRY_CURRENCY_MAP, CURRENCY_SYMBOL_MAP } from '@/config/constants';
 import { getCDCSlug } from '../config/cdc-slugs';
 import { getSecurityMessage } from '@/constants/securityMessages';
+import { cacheUtils } from '@/utils/cache';
 
 // Mock data for components that don't have free APIs
 const mockData = {
@@ -44,6 +45,13 @@ const mockData = {
 // Global destination search using OpenCage Geocoding API
 export const searchGlobalDestination = async (query: string): Promise<Array<{name: string, country: string, coordinates: {lat: number, lon: number}}>> => {
   try {
+    // Check cache first
+    const cacheKey = query.toLowerCase().trim();
+    const cachedData = cacheUtils.geocoding.get(cacheKey) as Array<{name: string, country: string, coordinates: {lat: number, lon: number}}> | null;
+    if (cachedData) {
+      return cachedData;
+    }
+
     // Using OpenCage Geocoding API for destination search
     
     // Check if OpenCage API key is available
@@ -87,7 +95,10 @@ export const searchGlobalDestination = async (query: string): Promise<Array<{nam
         return destination;
       });
       
-              // OpenCage working, found destinations
+      // Cache the results
+      cacheUtils.geocoding.set(cacheKey, destinations);
+      
+      // OpenCage working, found destinations
       // All processed destinations
       return destinations;
     }
