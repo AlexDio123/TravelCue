@@ -23,8 +23,6 @@ export default function STRAvailabilityCard({ destination }: STRAvailabilityCard
       setError(null);
       
       try {
-        console.log('🏠 STR Card - Fetching data for:', destination);
-        
         // Step 1: Get coordinates using searchGlobalDestination (same as AttractionsCard)
         let coordinates: { lat: number; lon: number } | null = null;
         
@@ -35,20 +33,17 @@ export default function STRAvailabilityCard({ destination }: STRAvailabilityCard
           
           if (searchResults && searchResults.length > 0) {
             coordinates = searchResults[0].coordinates;
-            console.log('🏠 STR Card - Got coordinates from search:', coordinates);
           }
         } catch (searchError) {
-          console.log('⚠️ STR Card - Could not get coordinates from search:', searchError);
+          // Silently handle search errors
         }
         
         if (!coordinates) {
-          console.log('⚠️ STR Card - No coordinates available');
           setStrData(null);
           return;
         }
         
         // Step 2: Use OpenStreetMap Overpass API (same as AttractionsCard)
-        console.log('🏠 STR Card - Fetching from OpenStreetMap Overpass API...');
         
         const overpassQuery = `
           [out:json][timeout:25];
@@ -78,7 +73,6 @@ export default function STRAvailabilityCard({ destination }: STRAvailabilityCard
           
           if (data.elements && Array.isArray(data.elements) && data.elements.length > 0) {
             const accommodationCount = data.elements.length;
-            console.log(`🏠 STR Card - Found ${accommodationCount} accommodation options`);
             
             // Extract specific accommodation options (max 8 for display)
             const accommodationOptions = data.elements
@@ -146,14 +140,12 @@ export default function STRAvailabilityCard({ destination }: STRAvailabilityCard
               options: accommodationOptions
             };
             
-            console.log('🏠 STR Card - Returning OpenStreetMap data with options:', result);
             setStrData(result);
             return;
           }
         }
         
         // No data available from OpenStreetMap
-        console.log('🏠 STR Card - No accommodation data available from OpenStreetMap');
         setStrData(null);
         
       } catch (err) {

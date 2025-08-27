@@ -21,12 +21,9 @@ export default function LanguageSelector() {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleLanguageChange = (newLocale: string) => {
-    console.log('🌍 LanguageSelector - User clicked on locale:', newLocale);
     changeLocale(newLocale as 'en' | 'es' | 'fr');
     setIsOpen(false);
   };
-
-  console.log('🌍 LanguageSelector - Current locale:', locale, 'Available locales:', availableLocales);
 
   return (
     <div className="relative">
