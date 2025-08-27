@@ -11,7 +11,11 @@ export const metadata: Metadata = {
   description: "Get a comprehensive overview of any travel destination including weather, events, safety, currency, and more. Plan your next trip with real-time data.",
   keywords: "travel, destination, weather, events, safety, currency, tourism, trip planning",
   authors: [{ name: "TravelCue Team" }],
-  viewport: "width=device-width, initial-scale=1",
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function RootLayout({
